@@ -733,8 +733,7 @@ found:
 static void avc_audit_pre_callback(struct audit_buffer *ab, void *a)
 {
 	struct common_audit_data *ad = a;
-	audit_log_format(ab, "avc:  %s ",
-			 ad->selinux_audit_data->denied ? "denied" : "granted");
+	audit_log_format(ab, "avc:  denied ");
 	avc_dump_av(ab, ad->selinux_audit_data->tclass,
 			ad->selinux_audit_data->audited);
 	audit_log_format(ab, " for ");
@@ -754,27 +753,8 @@ static void avc_audit_post_callback(struct audit_buffer *ab, void *a)
 		       ad->selinux_audit_data->ssid,
 		       ad->selinux_audit_data->tsid,
 		       ad->selinux_audit_data->tclass);
-	if (ad->selinux_audit_data->denied) {
-		audit_log_format(ab, " permissive=%u",
-				 ad->selinux_audit_data->result ? 0 : 1);
-#ifdef CONFIG_MTK_SELINUX_AEE_WARNING
-		{
-			struct nlmsghdr *nlh;
-			char *selinux_data;
-
-			if (enforcing_enabled(ad->selinux_audit_data->state)
-					&& ab) {
-				nlh = nlmsg_hdr(audit_get_skb(ab));
-				selinux_data = nlmsg_data(nlh);
-
-				if (mtk_audit_hook
-						&& nlh->nlmsg_type != AUDIT_EOE
-						&& nlh->nlmsg_type == 1400)
-					mtk_audit_hook(selinux_data);
-			}
-		}
-#endif
-	}
+	audit_log_format(ab, " permissive=%u",
+			 ad->selinux_audit_data->result ? 0 : 1);
 }
 
 /* This is the slow part of avc audit with big stack footprint */
@@ -786,6 +766,9 @@ noinline int slow_avc_audit(struct selinux_state *state,
 	struct common_audit_data stack_data;
 	struct selinux_audit_data sad;
 
+	if (!denied)
+		return 0;
+
 	if (!a) {
 		a = &stack_data;
 		a->type = LSM_AUDIT_DATA_NONE;
@@ -796,7 +779,6 @@ noinline int slow_avc_audit(struct selinux_state *state,
 	sad.ssid = ssid;
 	sad.tsid = tsid;
 	sad.audited = audited;
-	sad.denied = denied;
 	sad.result = result;
 	sad.state = state;
 
