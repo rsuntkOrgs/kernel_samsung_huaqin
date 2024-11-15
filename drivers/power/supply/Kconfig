@@ -29,6 +29,12 @@ config APM_POWER
 	  Say Y here to enable support APM status emulation using
 	  battery class devices.
 
+# HS03s for SR-AL5625-01-251 by wenyaqi at 20210425 start
+config BATTERY_ID_ADC
+	bool "battery id adc"
+	default y
+# HS03s for SR-AL5625-01-251 by wenyaqi at 20210425 end
+
 config GENERIC_ADC_BATTERY
 	tristate "Generic battery support using IIO"
 	depends on IIO
@@ -645,4 +651,320 @@ config CHARGER_CROS_USBPD
 	  what is connected to USB PD ports from the EC and converts
 	  that into power_supply properties.
 
+config MTK_BATTERY
+	bool "MTK BATTERY framework and algorithm"
+	depends on MFD_MT6397
+	default n
+	help
+	  Say Y to enable support for MTK battery Algorithm.
+	  It is fuel gauge algorithm , The driver get various
+	  battery information from hardware to calculate
+	  Battery percentage.
+
+config BATTERY_MT6357
+	tristate "MT6357 fuel gauge support"
+	depends on MFD_MT6397
+	depends on NET
+	default m
+	help
+	  Say Y to enable support for MT6357 battery driver.
+	  it measure battery current and temperature to provide
+	  battery information , It issues interrupt when trigger
+	  threshold is met.
+
+config BATTERY_MT6359
+	tristate "MT6359 fuel gauge support"
+	depends on MFD_MT6397
+	depends on NET
+	default m
+	help
+	  Say Y to enable support for MT6359 battery driver.
+	  it measure battery current and temperature to provide
+	  battery information , It issues interrupt when trigger
+	  threshold is met.
+
+config CHARGER_MT6360
+	tristate "Mediatek MT6360 Charger Driver"
+	depends on MFD_MT6360
+	depends on REGULATOR
+	select EXTCON
+	help
+	  Say Y here to enable MT6360 Charger Part.
+	  support High-Accuracy Voltage/Current Regulation,
+	  Average Input Current Regulation, Battery Tempature Sensing,
+	  Over-Temperature Protection, DPDM Detection for BC1.2
+
+config CHARGER_TYPE_MT6357
+	tristate "MT6357 Charger Type Detection Driver"
+	depends on MFD_MT6397
+	help
+	  Say yes here to enable MT6357 Charger Type
+	  Detection Driver.
+	  This driver use MT6357 to detect charger type
+	  Say no if not using MT6357 Charger Type Detection.
+
+config CHARGER_MT6357
+	bool "MT6357 Pulse Charger Driver"
+	depends on MFD_MT6397
+	help
+	  Say yes here to enable MT6357 Pulse Charger
+	  Detection Driver.
+	  This driver use MT6357 to charge
+	  Say no if not using MT6357 to charge
+
+config MTK_CHARGER
+	bool "MediaTek Charging Driver"
+	help
+	  Say yes here to enable MediaTek charging driver.
+	  This driver contains charging control flow and
+	  maintains charging status.
+	  Say no if not using MediaTek charging driver.
+
+config MTK_KERNEL_POWER_OFF_CHARGING
+	bool "MTK kernel power off charging"
+	depends on MTK_CHARGER
+	help
+	  yes : support KPOC feature, power off charging would running by
+	  kernel and charging animation by kpoc service. no: not support KPOC
+	  feature.
+	  device won't enter charging mode if config is no.
+
+config MTK_PUMP_EXPRESS_PLUS_SUPPORT
+	bool "MediaTek PUMP EXPRESS PLUS"
+	depends on MTK_CHARGER
+	help
+	  Fast charging technology using switch charger and current pattern
+	  to achive better charging ability.
+	  Set Yes to enable PE+
+	  Set No to disable PE+
+
+config MTK_PUMP_EXPRESS_PLUS_20_SUPPORT
+	bool "MediaTek PUMP EXPRESS PLUS 2.0"
+	depends on MTK_CHARGER
+	help
+	  Fast charging technology using switch charger and current pattern
+	  to achive better charging ability. It has higher charging efficiency
+	  and has better thermal performance than PE+.
+	  Set Yes to enable PE+2.0
+	  Set No to disable PE+2.0
+
+config MTK_PUMP_EXPRESS_40_SUPPORT
+	bool "MediaTek PUMP EXPRESS 4.0"
+	depends on MTK_CHARGER
+	help
+	  Fast charging technology using switch charger and current pattern
+	  to achive better charging ability. It has higher charging efficiency
+	  and has better thermal performance than PE+.
+	  Set Yes to enable PE 4.0
+	  Set No to disable PE 4.0
+
+# HS03s for SR-AL5625-01-249 by wenyaqi at 20210425 start
+config AFC_CHARGER
+	bool "Using AFC device driver"
+	default n
+	help
+	  If you say yes here you will get support for
+	  the AFC device driver.
+# HS03s for SR-AL5625-01-249 by wenyaqi at 20210425 end
+
+config CHARGER_RT9458
+	bool "Charger Driver for Richtek RT9458 Charger IC"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  Richtek RT9458 driver.
+	  It depends on
+	  the config MTK_CHARGER.
+
+config CHARGER_RT9465
+	bool "Charger Driver for Richtek RT9465 Charger IC"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable Richtek RT9465 driver.
+	  It is mainly used as slave IC for dual charger
+	  application.
+	  It depends on config MTK_CHARGER.
+
+config CHARGER_RT9466
+	bool "Charger Driver for Richtek RT9466 Charger IC"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable Richtek RT9466 driver.
+	  It is mainly used as slave IC for dual charger
+	  application.
+	  It depends on config MTK_CHARGER.
+
+config CHARGER_RT9467
+	bool "Charger Driver for Richtek RT9467 Charger IC"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable Richtek RT9467 driver.
+	  It is mainly used as slave IC for dual charger
+	  application.
+	  It depends on config MTK_CHARGER.
+
+config CHARGER_RT9471
+	bool "Charger Driver for Richtek RT9471 Charger IC"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable Richtek RT9471 driver.
+	  It supports RT9470/RT9470D/RT9471/RT9471D,
+	  which RT9470D and RT9471D support BC1.2
+	  It depends on config MTK_CHARGER.
+
+config CHARGER_BQ25601
+	bool "CHARGER_BQ25601"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  TI BQ25601 driver.
+	  It depends on
+	  the config MTK_CHARGER.
+# HS03s for SR-AL5625-01-509 by wenyaqi at 20210527 start
+config CHARGER_BQ2560X
+	bool "CHARGER_BQ2560X"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  TI BQ2560X driver.
+# HS03s for SR-AL5625-01-509 by wenyaqi at 20210527 end
+
+# HS03s for SR-AL5625-01-510 by wenyaqi at 20210531 start
+config CHARGER_SGM41511
+	bool "CHARGER_SGM41511"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  SGM41511 driver.
+# HS03s for SR-AL5625-01-510 by wenyaqi at 20210531 end
+
+# hs03s_NM code for SR-AL5625-01-646 by shixuanxuan at 20220414 start
+config CHARGER_SGM41513
+	bool "CHARGER_SGM41513"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  SGM41513 driver.
+# hs03s_NM code for SR-AL5625-01-646 by shixuanxuan at 20220414 end
+
+# HS04_T for DEAL6398A-1879 by shixuanxuan at 20221012 start
+config CHARGER_UPM6910
+	bool "CHARGER_UPM6910"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  UPM6910 driver.
+# HS04_T for DEAL6398A-1879 by shixuanxuan at 20221012 end
+
+# HS03s for SR-AL5625-01-543 by wenyaqi at 20210611 start
+config CHARGER_ETA6953
+	bool "CHARGER_ETA6953"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  ETA6953 driver.
+# HS03s for SR-AL5625-01-543 by wenyaqi at 20210611 end
+
+# HS03s for SR-AL5625-01-542 by wenyaqi at 20210609 start
+config CHARGER_SY6974
+	bool "CHARGER_SY6974"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  SY6974 driver.
+# HS03s for SR-AL5625-01-542 by wenyaqi at 20210609 end
+
+# Tab A7 lite_U code for AX3565AU-313 by shanxinkai at 20240120 start
+config BATT_TIME_TO_FULL
+	bool "Using time to full feature"
+	default n
+	help
+	  If you say yes here you will get support for
+	  the batt time to full.
+# Tab A7 lite_U code for AX3565AU-313 by shanxinkai at 20240120 end
+# hs04_u for  AL6398AU-178 by shixuanxuan at 20240117 start
+config GXY_HS04_BATT_TIME_TO_FULL
+	bool "Using gxy time to full feature"
+	default n
+	help
+	  If you say yes here you will get support for
+	  the gxy batt time to full.
+# hs04_u for  AL6398AU-178 by shixuanxuan at 20240117 end
+
+config CUSTOM_BATTERY_EXTERNAL_CHANNEL
+	bool "customer external gauge test"
+	depends on MTK_PMIC_CHIP_MT6359P
+	default n
+	help
+	  This config is for internal testing only.
+	  Say Yes to enable support for Customer external gauge.
+          It depends on MTK_PMIC_CHIP_MT6359P
+          Added for Battery System test
+
+if MACH_MT6768
+source "drivers/power/supply/mediatek/battery/Kconfig"
+source "drivers/power/supply/mediatek/charger/Kconfig"
+endif
+
+if MACH_MT6739
+source "drivers/power/supply/mediatek/battery/Kconfig"
+source "drivers/power/supply/mediatek/charger/Kconfig"
+endif
+
+if MACH_MT6771
+source "drivers/power/supply/mediatek/battery/Kconfig"
+source "drivers/power/supply/mediatek/charger/Kconfig"
+endif
+
+if MACH_MT6877
+source "drivers/power/supply/mediatek/battery/Kconfig"
+source "drivers/power/supply/mediatek/charger/Kconfig"
+endif
+
+if MACH_MT6781
+source "drivers/power/supply/mediatek/battery/Kconfig"
+source "drivers/power/supply/mediatek/charger/Kconfig"
+endif
+
+if MACH_MT6833
+source "drivers/power/supply/mediatek/battery/Kconfig"
+source "drivers/power/supply/mediatek/charger/Kconfig"
+endif
+
+if MACH_MT6893
+source "drivers/power/supply/mediatek/battery/Kconfig"
+source "drivers/power/supply/mediatek/charger/Kconfig"
+endif
+
+if MACH_MT6885
+source "drivers/power/supply/mediatek/battery/Kconfig"
+source "drivers/power/supply/mediatek/charger/Kconfig"
+endif
+
+if MACH_MT6853
+source "drivers/power/supply/mediatek/battery/Kconfig"
+source "drivers/power/supply/mediatek/charger/Kconfig"
+endif
+
+if MACH_MT6873
+source "drivers/power/supply/mediatek/battery/Kconfig"
+source "drivers/power/supply/mediatek/charger/Kconfig"
+endif
+
+if MACH_MT6785
+source "drivers/power/supply/mediatek/battery/Kconfig"
+source "drivers/power/supply/mediatek/charger/Kconfig"
+endif
+
+# HS03s for SR-AL5628-01-162 by zhangjiangbin at 20220915 start
+config CHARGER_HARDINFO
+	bool "CHARGER_HARDINFO"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable
+	  charger hardinfo driver.
+#HS03s for SR-AL5628-01-162 by zhangjiangbin at 20220915 end
+
 endif # POWER_SUPPLY
+
+source "drivers/power/supply/sm/sm5714/Kconfig"

@@ -66,6 +66,9 @@ do {									\
 
 #endif /* DUMP_MSGS */
 
+/* SCSI commands that we recognize */
+#define READ_CD					0xbe
+
 /* Length of a SCSI Command Data Block */
 #define MAX_COMMAND_SIZE	16
 
@@ -132,6 +135,10 @@ static inline bool fsg_lun_is_open(struct fsg_lun *curlun)
 
 /* Maximal number of LUNs supported in mass storage function */
 #define FSG_MAX_LUNS	16
+
+#ifdef CONFIG_USB_CONFIGFS_MTK_FASTMETA
+#define LUN_NAME_LEN	8
+#endif
 
 enum fsg_buffer_state {
 	BUF_STATE_SENDING = -2,
