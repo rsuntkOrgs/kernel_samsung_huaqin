@@ -3,9 +3,18 @@
 # Makefile for the linux memory manager.
 #
 
+#if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
+ccflags-y += -I$(srctree)/drivers/gpu/mediatek
+#endif
+
+ifdef CONFIG_MTK_ION
+subdir-ccflags-y += -I$(srctree)/drivers/staging/android/mtk_ion
+endif
+
 KASAN_SANITIZE_slab_common.o := n
 KASAN_SANITIZE_slab.o := n
 KASAN_SANITIZE_slub.o := n
+KASAN_SANITIZE_memblock.o := n
 
 # These files are disabled because they produce non-interesting and/or
 # flaky coverage that is not a function of syscall inputs. E.g. slab is out of
@@ -42,7 +51,7 @@ obj-y			:= filemap.o mempool.o oom_kill.o fadvise.o \
 			   mm_init.o mmu_context.o percpu.o slab_common.o \
 			   compaction.o vmacache.o \
 			   interval_tree.o list_lru.o workingset.o \
-			   debug.o $(mmu-y)
+			   debug.o $(mmu-y) showmem_extra.o
 
 obj-y += init-mm.o
 
@@ -108,3 +117,4 @@ obj-$(CONFIG_HARDENED_USERCOPY) += usercopy.o
 obj-$(CONFIG_PERCPU_STATS) += percpu-stats.o
 obj-$(CONFIG_HMM) += hmm.o
 obj-$(CONFIG_MEMFD_CREATE) += memfd.o
+obj-$(CONFIG_PAGE_BOOST_RECORDING) += io_record.o
