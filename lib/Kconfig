@@ -274,6 +274,9 @@ config LZ4KD_COMPRESS
 
 config LZ4_DECOMPRESS
 	tristate
+	
+config LZ4KD_DECOMPRESS
+	tristate
 
 config LZ4KD_DECOMPRESS
 	tristate
