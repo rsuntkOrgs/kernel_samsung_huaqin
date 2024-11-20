@@ -31,9 +31,9 @@ if [ -z $DEFCONFIG ]; then
 	pr_err "Invalid empty variable for \$DEFCONFIG"
 fi
 if [[ "$KERNELSU" = "true" ]]; then
-curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s main
+	curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s main
 else
-pr_info "KernelSU is disabled, export KERNELSU=true to enable it"
+	pr_info "KernelSU is disabled, export KERNELSU=true to enable it"
 fi
 
 export CC=clang
@@ -62,6 +62,11 @@ if [[ $COMPILE_WITH_LLVM = "true" ]]; then
 	pr_info "Compiling with LLVM.."
 	MKFLAG+=" LLVM=1"
 	export LLVM=1
+fi
+if [[ $COMPILE_WITH_IAS = "true" ]]; then
+	pr_info "Compiling with LLVM_IAS.."
+	MKFLAG+=" LLVM_IAS=1"
+	export LLVM_IAS=1
 fi
 
 __mk_defconfig() {
@@ -95,7 +100,7 @@ fi
 if [ -e $IMAGE ]; then
 	pr_info "Build done."
 	cp $IMAGE AnyKernel3/
-	cd AnyKernel3 && zip -r6 ../A042F-AnyKernel3.zip *
+	cd AnyKernel3 && zip -r6 ../A042F-AnyKernel3_`echo $DATE`.zip *
  	if [[ $KBUILD_BUILD_HOST != "rsuntk_orgs" ]]; then
   		rm Image && cd ..
 	fi
