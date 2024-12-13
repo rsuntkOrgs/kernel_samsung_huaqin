@@ -121,7 +121,6 @@ fi
 if [ -e $IMAGE ]; then
 	pr_info "Build done."
 	if [ -d $(pwd)/AnyKernel3 ]; then
-		DEVICE="A042F"
 		if [ ! -z $DEVICE ]; then
 			DEVICE_MODEL="-`echo $DEVICE`"
 		fi

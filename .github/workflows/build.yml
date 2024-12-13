@@ -1,0 +1,165 @@
+name: Build Kernel
+on:
+  workflow_dispatch:
+    inputs:
+      TARGET_DEVICE:
+        description: 'Target Device'
+        required: true
+        default: 'a03s'
+        type: choice
+        options:
+          - a03s
+          - a04e
+      BRANCH:
+        description: Branch
+        default: ''
+        required: true
+      CLANG_EIGHTEEN:
+        description: Use clang 18
+        type: boolean
+      KSU:
+        description: Add KernelSU support
+        type: boolean
+      UPLOAD_TO_TG:
+        description: Upload to Telegram
+        type: boolean
+        
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: telegramUpload
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        repository: rsuntkOrgs/android_kernel_samsung_mt6765-hq
+        ref: ${{ github.event.inputs.BRANCH }}
+        path: android_kernel_samsung_mt6765-hq
+        show-progress: false
+        fetch-depth: 1
+        
+    - name: Prepare dependencies
+      run: |
+        sudo apt update -y
+        sudo apt install bc cpio flex bison aptitude git python-is-python3 tar perl wget curl lz4 -y
+        sudo aptitude install libssl-dev -y
+        
+    - name: Fetch toolchains
+      run: |
+        mkdir toolchains
+        cd toolchains
+        if [[ ${{ github.event.inputs.CLANG_EIGHTEEN }} != "true" ]]; then
+          git clone --depth=1 https://gitlab.com/Rissu-Projekt/toolchains/clang-toolchains.git clang-11
+        else
+          mkdir clang-18 && cd clang-18
+          wget -q -O clang18.tar.gz https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz
+          tar -xf clang18.tar.gz && rm clang18.tar.gz && cd ..
+        fi
+        git clone --depth=1 https://github.com/VH-Devices/toolchains.git -b gcc-10.3.0 gcc-10
+      working-directory: android_kernel_samsung_mt6765-hq
+    - name: Prepare timezone fix
+      run: |
+        sudo rm /etc/localtime
+        sudo ln -s /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
+      
+    - name: Build kernel
+      id: buildKernel
+      run: |
+        if [[ "${{ github.event.inputs.CLANG_EIGHTEEN }}" != "true" ]]; then
+          export PATH=$(pwd)/toolchains/clang-11/bin:$PATH
+        else
+          export PATH=$(pwd)/toolchains/clang-18/bin:$PATH
+        fi
+        export CROSS_COMPILE=$(pwd)/toolchains/gcc-10/bin/aarch64-buildroot-linux-gnu-
+        export CLANG_TRIPLE=aarch64-linux-gnu-
+
+        export KBUILD_BUILD_USER="rsuntk"
+        export KBUILD_BUILD_HOST="rsuntkOrgs"
+        export BUILD_START=`date`
+        export IS_CI=true
+
+        if [[ "${{ github.event.inputs.TARGET_DEVICE }}" = "a03s" ]]; then
+          export DEFCONFIG="rsuntk-a03s_defconfig"
+          export DEVICE="A037F"
+        elif [[ "${{ github.event.inputs.TARGET_DEVICE }}" = "a04e" ]]; then
+          export DEFCONFIG="rsuntk-a04e_defconfig"
+          export DEVICE="A042F"
+        fi
+
+        export TARGET_PRODUCT=a04
+
+        # do some checks
+        echo ""
+        echo ====================================================
+        echo CROSS_COMPILE=$CROSS_COMPILE
+        echo DEFCONFIG="${{ github.event.inputs.DEFCONFIG }}"
+        echo CLANG="`clang -v 2>&1 | grep ' version ' | sed 's/[[:space:]]*$//'`"
+        echo CLANG_TRIPLE=$CLANG_TRIPLE
+        echo KBUILD_BUILD_USER=$KBUILD_BUILD_USER
+        echo KBUILD_BUILD_HOST=$KBUILD_BUILD_HOST
+        echo CURRENT_DIR=$(pwd)
+        echo DATE=`date`
+        echo KERNELSU="${{ github.event.inputs.KSU }}"
+        echo DEVICE="`echo $DEVICE`"
+        echo ====================================================
+        echo ""
+        
+        if [[ ${{ github.event.inputs.KSU }} = "true" ]]; then
+        	curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s main
+        fi
+        
+        bash $(pwd)/build_kernel.sh
+        if [[ ${{ github.event.inputs.KSU }} = "true" ]]; then
+        	KSU_REV_COUNT=$(cd KernelSU && git rev-list --count HEAD)
+        	KSU_VERSION=$(expr 10200 + $KSU_REV_COUNT)
+        fi
+        echo "- KernelSU version: $KSU_VERSION"
+        
+        ## CREATE buildDetails.txt
+        printf "Localversion: `./getutsrel`
+        Clang version: `clang -v 2>&1 | grep ' version ' | sed 's/[[:space:]]*$//'`
+        Defconfig: `echo $DEFCONFIG`
+        KernelSU: `echo $KSU_VERSION`
+        Build start: `echo $BUILD_START`
+        " >> buildDetails.txt
+        
+        echo ""
+        echo "===================================================="
+        strings out/arch/arm64/boot/Image | grep "Linux version"
+        echo "===================================================="
+        mv out/.config out/build_config.txt
+        gitsha1=$(git rev-parse --short HEAD)
+        buildDetails="`make kernelversion`-`echo $DEVICE`_`echo $gitsha1`-`date +'%Y%m%d%H%M%S'`" && echo "buildDetails=$buildDetails" >> $GITHUB_OUTPUT
+      working-directory: android_kernel_samsung_mt6765-hq
+      
+    - name: Upload config
+      uses: actions/upload-artifact@v4
+      with:
+        name: Config-${{ steps.buildKernel.outputs.buildDetails }}
+        path: android_kernel_samsung_mt6765-hq/out/build_config.txt
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: Build-${{ steps.buildKernel.outputs.buildDetails }}
+        path: |
+          android_kernel_samsung_mt6765-hq/out/arch/arm64/boot/*.gz
+          android_kernel_samsung_mt6765-hq/out/arch/arm64/boot/dts/mediatek/*.dtb
+
+    - name: Upload AnyKernel3
+      uses: actions/upload-artifact@v4
+      with:
+        name: AnyKernel3-${{ steps.buildKernel.outputs.buildDetails }}
+        path: android_kernel_samsung_mt6765-hq/AnyKernel3/*
+        compression-level: 9
+        
+    - name: Upload to Telegram
+      env:
+        CHAT_ID: ${{ secrets.CHAT_ID }}
+        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        TITLE: "Galaxy ${{ github.event.inputs.TARGET_DEVICE }} Kernel"
+      run: |
+        if [ ! -z "${{ secrets.BOT_TOKEN }}" ]; then
+          ZIP=$(find `pwd` -name "*.zip")
+          bash $(pwd)/scripts/rsuntkbot.sh $ZIP "`cat buildDetails.txt`"
+        fi
+      working-directory: android_kernel_samsung_mt6765-hq
