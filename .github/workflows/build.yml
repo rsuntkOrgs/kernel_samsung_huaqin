@@ -31,8 +31,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        repository: rsuntkOrgs/android_kernel_samsung_mt6765-hq
-        ref: ${{ github.event.inputs.BRANCH }}
         path: android_kernel_samsung_mt6765-hq
         show-progress: false
         fetch-depth: 1
