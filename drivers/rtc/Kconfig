@@ -20,6 +20,12 @@ menuconfig RTC_CLASS
 	  probably want to enable one or more of the interfaces below.
 
 if RTC_CLASS
+config RTC_AUTO_PWRON
+        bool "RTC Auto Power On Alarm by PMICs"
+        default n
+        help
+          Support for the auto power on alarm on alarm booting supporting PMICs.
+          Say Y if you want to enable this feature.
 
 config RTC_HCTOSYS
 	bool "Set system time from RTC on startup and resume"
@@ -1716,6 +1722,16 @@ config RTC_DRV_MOXART
 
 	   This driver can also be built as a module. If so, the module
 	   will be called rtc-moxart
+
+config RTC_DRV_MT6358
+        tristate "Mediatek Real Time Clock driver"
+        depends on MFD_MT6358 || (COMPILE_TEST && IRQ_DOMAIN)
+        help
+          This selects the Mediatek(R) RTC driver. RTC is part of Mediatek
+          MT6358 PMIC. You should enable MT6358 PMIC MFD before select
+          Mediatek(R) RTC driver.
+
+          If you want to use Mediatek(R) RTC interface, select Y or M here.
 
 config RTC_DRV_MT6397
 	tristate "MediaTek PMIC based RTC"

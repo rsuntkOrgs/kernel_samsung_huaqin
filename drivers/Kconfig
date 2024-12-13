@@ -57,6 +57,8 @@ source "drivers/char/Kconfig"
 
 source "drivers/i2c/Kconfig"
 
+source "drivers/i3c/Kconfig"
+
 source "drivers/spi/Kconfig"
 
 source "drivers/spmi/Kconfig"
@@ -221,5 +223,14 @@ source "drivers/siox/Kconfig"
 
 source "drivers/slimbus/Kconfig"
 
+source "drivers/interconnect/Kconfig"
+
 source "drivers/energy_model/Kconfig"
+
+source "drivers/switch/Kconfig"
+
+source "drivers/samsung/Kconfig"
+
+source "drivers/battery/Kconfig"
+
 endmenu

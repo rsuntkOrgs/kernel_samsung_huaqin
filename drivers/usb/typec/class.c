@@ -1116,11 +1116,34 @@ port_type_store(struct device *dev, struct device_attribute *attr,
 	int ret;
 	enum typec_port_type type;
 
+#ifdef CONFIG_HQ_PROJECT_HS03S
+    /* modify code for O6 */
 	if (!port->cap->port_type_set || port->cap->type != TYPEC_PORT_DRP) {
 		dev_dbg(dev, "changing port type not supported\n");
 		return -EOPNOTSUPP;
 	}
-
+#endif
+#ifdef CONFIG_HQ_PROJECT_O22
+    /* modify code for O22 */
+	if (!port->cap->port_type_set || port->cap->type != TYPEC_PORT_DRP) {
+		dev_dbg(dev, "changing port type not supported\n");
+		return -EOPNOTSUPP;
+	}
+#endif
+#ifdef CONFIG_HQ_PROJECT_HS04
+    /* modify code for O6 */
+	if (!port->cap->port_type_set || port->cap->type != TYPEC_PORT_DRP) {
+		dev_dbg(dev, "changing port type not supported\n");
+		return -EOPNOTSUPP;
+	}
+#endif
+#ifdef CONFIG_HQ_PROJECT_OT8
+    /* modify code for OT8 */
+	if (!port->cap->port_type_set) {
+		dev_dbg(dev, "changing port type not supported\n");
+		return -EOPNOTSUPP;
+	}
+#endif
 	ret = sysfs_match_string(typec_port_power_roles, buf);
 	if (ret < 0)
 		return ret;
@@ -1128,10 +1151,12 @@ port_type_store(struct device *dev, struct device_attribute *attr,
 	type = ret;
 	mutex_lock(&port->port_type_lock);
 
+#if 0
 	if (port->port_type == type) {
 		ret = size;
 		goto unlock_and_ret;
 	}
+#endif
 
 	ret = port->cap->port_type_set(port->cap, type);
 	if (ret)
@@ -1171,7 +1196,13 @@ static ssize_t power_operation_mode_show(struct device *dev,
 					 char *buf)
 {
 	struct typec_port *port = to_typec_port(dev);
-
+	/* HS03S for P220909-05865 by duanweiping at 20220914 start */
+	/* Tab A7 lite_T for P221011-07704 by duanweiping at 20221020 start */
+	if((port->pwr_opmode < TYPEC_PWR_MODE_USB) || (port->pwr_opmode > TYPEC_PWR_MODE_PD)){
+		return sprintf(buf, "%s\n", typec_pwr_opmodes[TYPEC_PWR_MODE_USB]);
+	}
+	/* Tab A7 lite_T for P221011-07704 by duanweiping at 20221020 end */
+	/* HS03S for P220909-05865 by duanweiping at 20220914 end */
 	return sprintf(buf, "%s\n", typec_pwr_opmodes[port->pwr_opmode]);
 }
 static DEVICE_ATTR_RO(power_operation_mode);
@@ -1380,6 +1411,12 @@ void typec_set_pwr_opmode(struct typec_port *port,
 {
 	struct device *partner_dev;
 
+/* hs14 code for AL6528A-1048 by wenyaqi at 2022/12/27 start */
+	if (port == NULL) {
+		return;
+	}
+/* hs14 code for AL6528A-1048 by wenyaqi at 2022/12/27 end */
+
 	if (port->pwr_opmode == opmode)
 		return;
 
@@ -1395,6 +1432,7 @@ void typec_set_pwr_opmode(struct typec_port *port,
 			partner->usb_pd = 1;
 			sysfs_notify(&partner_dev->kobj, NULL,
 				     "supports_usb_power_delivery");
+			kobject_uevent(&port->dev.kobj, KOBJ_CHANGE);
 		}
 		put_device(partner_dev);
 	}
