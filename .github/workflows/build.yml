@@ -63,10 +63,12 @@ jobs:
       id: buildKernel
       run: |
         if [[ "${{ github.event.inputs.CLANG_EIGHTEEN }}" != "true" ]]; then
-          export PATH=$(pwd)/toolchains/clang-11/bin:$PATH
+          CLANG_VERSION=11
         else
-          export PATH=$(pwd)/toolchains/clang-18/bin:$PATH
+          CLANG_VERSION=18
         fi
+        
+        export PATH=$(pwd)/toolchains/clang-`echo $CLANG_VERSION`/bin:$PATH
         export CROSS_COMPILE=$(pwd)/toolchains/gcc-10/bin/aarch64-buildroot-linux-gnu-
         export CLANG_TRIPLE=aarch64-linux-gnu-
 
@@ -127,6 +129,12 @@ jobs:
         echo "===================================================="
         mkdir kernel_object
         find $(pwd) -type f -name "*.ko" -exec cp {} $(pwd)/kernel_object \;
+        LIST=$(ls kernel_object)
+        for file in $LIST; do
+          echo -e "- Stripping $file"
+          $(pwd)/toolchains/clang-`echo $CLANG_VERSION`/bin/llvm-strip "$file" --strip-unneeded
+        done
+
         mv out/.config out/build_config.txt
         gitsha1=$(git rev-parse --short HEAD)
         buildDetails="`make kernelversion`-`echo $DEVICE`_`echo $gitsha1`-`date +'%Y%m%d%H%M%S'`" && echo "buildDetails=$buildDetails" >> $GITHUB_OUTPUT
