@@ -80,9 +80,8 @@ jobs:
         elif [[ "${{ github.event.inputs.TARGET_DEVICE }}" = "a04e" ]]; then
           export DEFCONFIG="rsuntk-a04e_defconfig"
           export DEVICE="A042F"
+          export TARGET_PRODUCT=a04
         fi
-
-        export TARGET_PRODUCT=a04
 
         # do some checks
         echo ""
@@ -162,7 +161,7 @@ jobs:
         fi
       working-directory: android_kernel_samsung_mt6765-hq
         
-    - name: Strip LKM
+    - name: Strip LKMs
       run: |
         # Cleanup zip
         rm -rf *.zip
@@ -183,7 +182,7 @@ jobs:
         mv ../kernel_object_tmp/*.ko $(pwd)/kernel_object/
       working-directory: android_kernel_samsung_mt6765-hq
         
-    - name: Upload kernel objects
+    - name: Upload LKM
       uses: actions/upload-artifact@v4
       with:
         name: LKM-${{ steps.buildKernel.outputs.buildDetails }}
