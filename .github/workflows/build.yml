@@ -78,7 +78,7 @@ jobs:
         if [[ "${{ github.event.inputs.TARGET_DEVICE }}" = "a03s" ]]; then
           export DEFCONFIG="rsuntk-a03s_defconfig"
           export DEVICE="A037F"
-          rm -rf drivers/misc/mediatek/connectivity && cd drivers/misc/mediatek/ && git clone https://github.com/rsuntkOrgs/mtk_connectivity_module --depth=1 -b staging-4.19-a03s connectivity && rm -rf connectivity/.git && cd ../../..
+          rm -rf drivers/misc/mediatek/connectivity && cd drivers/misc/mediatek/ && git clone https://github.com/rsuntkOrgs/mtk_connectivity_module --depth=1 -b staging-4.19-a03s_lkm connectivity && rm -rf connectivity/.git && cd ../../..
         elif [[ "${{ github.event.inputs.TARGET_DEVICE }}" = "a04e" ]]; then
           export DEFCONFIG="rsuntk-a04e_defconfig"
           export DEVICE="A042F"
@@ -125,6 +125,8 @@ jobs:
         echo "===================================================="
         strings out/arch/arm64/boot/Image | grep "Linux version"
         echo "===================================================="
+        mkdir kernel_object
+        find $(pwd) -type f -name "*.ko" -exec cp {} $(pwd)/kernel_object \;
         mv out/.config out/build_config.txt
         gitsha1=$(git rev-parse --short HEAD)
         buildDetails="`make kernelversion`-`echo $DEVICE`_`echo $gitsha1`-`date +'%Y%m%d%H%M%S'`" && echo "buildDetails=$buildDetails" >> $GITHUB_OUTPUT
@@ -135,6 +137,12 @@ jobs:
       with:
         name: Config-${{ steps.buildKernel.outputs.buildDetails }}
         path: android_kernel_samsung_mt6765-hq/out/build_config.txt
+        
+    - name: Upload kernel objects
+      uses: actions/upload-artifact@v4
+      with:
+        name: LKM-${{ steps.buildKernel.outputs.buildDetails }}
+        path: android_kernel_samsung_mt6765-hq/kernel_object/*
         
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
