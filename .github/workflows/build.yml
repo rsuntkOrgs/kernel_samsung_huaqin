@@ -10,10 +10,6 @@ on:
         options:
           - a03s
           - a04e
-      BRANCH:
-        description: Branch
-        default: ''
-        required: true
       CLANG_EIGHTEEN:
         description: Use clang 18
         type: boolean
@@ -175,8 +171,7 @@ jobs:
         mkdir kernel_object
 
         # Only move neccessary path!
-        find $(pwd)/drivers/misc/mediatek -type f -name "*.ko" -exec mv {} ../kernel_object_tmp \;
-        find $(pwd)/kernel -type f -name "*.ko" -exec mv {} ../kernel_object_tmp \;
+        find $(pwd) -type f -name "*.ko" -exec mv {} ../kernel_object_tmp \;
         LIST=$(find ../kernel_object_tmp -type f -name "*.ko")
 
         # Start stripping
