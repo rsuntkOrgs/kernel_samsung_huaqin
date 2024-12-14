@@ -163,6 +163,12 @@ jobs:
         
     - name: Strip LKMs
       run: |
+        if [[ "${{ github.event.inputs.CLANG_EIGHTEEN }}" != "true" ]]; then
+          CLANG_VERSION=11
+        else
+          CLANG_VERSION=18
+        fi
+        
         # Cleanup zip
         rm -rf *.zip
 
