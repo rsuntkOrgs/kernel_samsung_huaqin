@@ -127,13 +127,6 @@ jobs:
         echo "===================================================="
         strings out/arch/arm64/boot/Image | grep "Linux version"
         echo "===================================================="
-        mkdir kernel_object
-        find $(pwd) -type f -name "*.ko" -exec cp {} $(pwd)/kernel_object \;
-        LIST=$(ls kernel_object)
-        for file in $LIST; do
-          echo -e "- Stripping $file"
-          $(pwd)/toolchains/clang-`echo $CLANG_VERSION`/bin/llvm-strip "$file" --strip-unneeded
-        done
 
         mv out/.config out/build_config.txt
         gitsha1=$(git rev-parse --short HEAD)
@@ -145,12 +138,6 @@ jobs:
       with:
         name: Config-${{ steps.buildKernel.outputs.buildDetails }}
         path: android_kernel_samsung_mt6765-hq/out/build_config.txt
-        
-    - name: Upload kernel objects
-      uses: actions/upload-artifact@v4
-      with:
-        name: LKM-${{ steps.buildKernel.outputs.buildDetails }}
-        path: android_kernel_samsung_mt6765-hq/kernel_object/*
         
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -177,4 +164,31 @@ jobs:
           ZIP=$(find `pwd` -name "*.zip")
           bash $(pwd)/scripts/rsuntkbot.sh $ZIP "`cat buildDetails.txt`"
         fi
+        
+    - name: Strip LKM
+      run: |
+        # Cleanup zip
+        rm -rf *.zip
+
+        # Create folder
+        mkdir ../kernel_object_tmp
+        mkdir kernel_object
+
+        # Only move neccessary path!
+        find $(pwd)/drivers/misc/mediatek -type f -name "*.ko" -exec mv {} ../kernel_object_tmp \;
+        find $(pwd)/kernel -type f -name "*.ko" -exec mv {} ../kernel_object_tmp \;
+        LIST=$(find ../kernel_object_tmp -type f -name "*.ko")
+
+        # Start stripping
+        for file in $LIST; do
+          echo -e "- Stripping $file"
+          $(pwd)/toolchains/clang-`echo $CLANG_VERSION`/bin/llvm-strip "$file" --strip-unneeded
+        done
+        mv ../kernel_object_tmp/*.ko $(pwd)/kernel_object/
       working-directory: android_kernel_samsung_mt6765-hq
+        
+    - name: Upload kernel objects
+      uses: actions/upload-artifact@v4
+      with:
+        name: LKM-${{ steps.buildKernel.outputs.buildDetails }}
+        path: android_kernel_samsung_mt6765-hq/kernel_object/*
