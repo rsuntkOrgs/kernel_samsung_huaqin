@@ -179,7 +179,7 @@ jobs:
 
         # Start stripping
         for file in $LIST; do
-          echo -e "- Stripping $file"
+          echo -e "- Stripping `basename $file`"
           $(pwd)/toolchains/clang-`echo $CLANG_VERSION`/bin/llvm-strip "$file" --strip-unneeded
         done
         mv ../kernel_object_tmp/*.ko $(pwd)/kernel_object/
