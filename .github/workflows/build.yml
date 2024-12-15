@@ -67,6 +67,7 @@ jobs:
         export PATH=$(pwd)/toolchains/clang-`echo $CLANG_VERSION`/bin:$PATH
         export CROSS_COMPILE=$(pwd)/toolchains/gcc-10/bin/aarch64-buildroot-linux-gnu-
         export CLANG_TRIPLE=aarch64-linux-gnu-
+        export KERNELSU="${{ github.event.inputs.KSU }}"
 
         export KBUILD_BUILD_USER="rsuntk"
         export KBUILD_BUILD_HOST="rsuntkOrgs"
@@ -98,10 +99,6 @@ jobs:
         echo DEVICE="`echo $DEVICE`"
         echo ====================================================
         echo ""
-        
-        if [[ ${{ github.event.inputs.KSU }} = "true" ]]; then
-        	curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s main
-        fi
         
         bash $(pwd)/build_kernel.sh
         if [[ ${{ github.event.inputs.KSU }} = "true" ]]; then
