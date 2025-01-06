@@ -60,6 +60,14 @@ obj-$(CONFIG_OCXL)		+= ocxl/
 obj-$(CONFIG_MISC_RTSX)		+= cardreader/
 obj-$(CONFIG_UID_SYS_STATS)	+= uid_sys_stats.o
 obj-y				+= mediatek/
+# A06 code for SR-AL7160A-01-06 by gaochao at 20240320 start
+# A06 code for SR-AL7160A-01-08 by gaochao at 20240321 start
+ifeq ($(strip $(CONFIG_HQ_PROJECT_OT8)),y)
+obj-$(CONFIG_KNOXVAULT_POWER)  += KnoxVault/
+obj-$(CONFIG_I2C_KNOXVAULTDEV)        += KnoxVaultDev/
+# A06 code for SR-AL7160A-01-06 by gaochao at 20240320 end
+# A06 code for SR-AL7160A-01-08 by gaochao at 20240321 end
+endif
 obj-$(CONFIG_DEV_RIL_BRIDGE) += dev_ril_bridge.o
 
 # TEEGRIS kernel driver

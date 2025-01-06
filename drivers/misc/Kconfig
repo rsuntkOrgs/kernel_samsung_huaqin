@@ -547,8 +547,14 @@ source "drivers/misc/cxl/Kconfig"
 source "drivers/misc/ocxl/Kconfig"
 source "drivers/misc/cardreader/Kconfig"
 source "drivers/misc/mediatek/Kconfig"
+# A06 code for SR-AL7160A-01-06 by gaochao at 20240320 start
+source "drivers/misc/KnoxVault/Kconfig"
+# A06 code for SR-AL7160A-01-06 by gaochao at 20240320 end
 source "drivers/misc/tzdev/Kconfig"
 # HS03S code added for SR-AL5625-01-233 by zhaoxiangxiang at 20210423 start
 source "drivers/misc/huaqin/Kconfig"
 # HS03S code added for SR-AL5625-01-233 by zhaoxiangxiang at 20210423 end
+# A06 code for SR-AL7160A-01-08 by gaochao at 20240321 start
+source "drivers/misc/KnoxVaultDev/Kconfig"
+# A06 code for SR-AL7160A-01-08 by gaochao at 20240321 end
 endmenu
