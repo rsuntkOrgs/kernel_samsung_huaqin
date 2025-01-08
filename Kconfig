@@ -55,8 +55,8 @@ config HQ_PROJECT_O22
    help
    HQ PROJECT O22
 
-config HQ_PROJECT_A06
-   bool CONFIG_HQ_PROJECT_A06
+config HQ_PROJECT_O8
+   bool CONFIG_HQ_PROJECT_O8
    default n
    help
    HQ PROJECT A06

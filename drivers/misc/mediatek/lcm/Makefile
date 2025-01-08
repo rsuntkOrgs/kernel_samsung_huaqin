@@ -51,7 +51,7 @@ endif
 obj-$(CONFIG_HQ_SET_LCD_BIAS) += lcm_bias.o
 # HS03S code added for SR-AL5625-01-506 by gaozhengwei at 20210526 end
 LCM_LISTS := $(subst ",,$(CONFIG_CUSTOM_KERNEL_LCM))
-#hs04 code for DEAL6398A-1875 by zhawei at 20221017 start
+# a06 code for AL7160A-5 by wenghailong at 20240313 start
 ifdef CONFIG_HQ_PROJECT_O22
 obj-$(CONFIG_MTK_LCM) += $(foreach LCM,$(LCM_LISTS),o22/)
 else ifdef CONFIG_HQ_PROJECT_O8
@@ -65,7 +65,7 @@ obj-$(CONFIG_MTK_LCM) += $(foreach LCM,$(LCM_LISTS),$(LCM)/)
 else
 obj-$(CONFIG_MTK_LCM) += $(foreach LCM,$(LCM_LISTS),$(LCM)/)
 endif
-#hs04 code for DEAL6398A-1875 by zhawei at 20221017 end
+# a06 code for AL7160A-5 by wenghailong at 20240313 end
 
 ifeq (y, $(filter y, $(CONFIG_MACH_MT6761)))
     MTK_PLATFORM:= $(subst ",,mt6765)
@@ -84,4 +84,3 @@ DEFINES += $(foreach LCM,$(LCM_DEFINES),$(LCM))
 DEFINES += MTK_LCM_PHYSICAL_ROTATION=\"$(MTK_LCM_PHYSICAL_ROTATION)\"
 ccflags-$(CONFIG_MTK_LCM) += $(addprefix -D, $(DEFINES))
 ccflags-$(CONFIG_MTK_LCM_DEVICE_TREE_SUPPORT) += -DMTK_LCM_DEVICE_TREE_SUPPORT
-
