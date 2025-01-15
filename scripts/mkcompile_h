@@ -76,7 +76,7 @@ UTS_TRUNCATE="cut -b -$UTS_LEN"
   CC_VERSION=$($CC -v 2>&1 | grep ' version ' | sed 's/[[:space:]]*$//')
   LD_VERSION=$($LD -v | head -n1 | sed 's/(compatible with [^)]*)//' \
 		      | sed 's/[[:space:]]*$//')
-  RISSU="Rissu (MT6765-HQ; A04e, A03s. buildStampId: `date +'%Y%m%d%H%M%S'`)"
+  RISSU="Rissu (MT6765-HQ; A04e, A03s, M04. MT6768-HQ: A06, buildStampId: `date +'%Y%m%d%H%M%S'`), yukiprjkt (codename: Shinjuku)"
   printf '#define LINUX_COMPILER "%s"\n' "$CC_VERSION, $LD_VERSION, $RISSU"
 ) > .tmpcompile
 
