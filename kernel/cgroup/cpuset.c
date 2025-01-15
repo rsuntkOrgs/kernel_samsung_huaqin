@@ -22,6 +22,7 @@
  *  distribution for more details.
  */
 
+#include "cgroup-internal.h"
 #include <linux/cpu.h>
 #include <linux/cpumask.h>
 #include <linux/cpuset.h>
@@ -63,6 +64,13 @@
 #include <linux/mutex.h>
 #include <linux/cgroup.h>
 #include <linux/wait.h>
+
+#ifdef CONFIG_MTK_SCHED_EXTENSION
+#define CS_SCHED_PREFER_NONE   0
+#define CS_SCHED_PREFER_BIG    1
+#define CS_SCHED_PREFER_LITTLE 2
+#define CS_SCHED_PREFER_END    3
+#endif
 
 DEFINE_STATIC_KEY_FALSE(cpusets_pre_enable_key);
 DEFINE_STATIC_KEY_FALSE(cpusets_enabled_key);
@@ -135,6 +143,9 @@ struct cpuset {
 
 	/* for custom sched domain */
 	int relax_domain_level;
+#ifdef CONFIG_MTK_SCHED_EXTENSION
+	u64 prefer_cpu;
+#endif
 };
 
 static inline struct cpuset *css_cs(struct cgroup_subsys_state *css)
@@ -308,7 +319,8 @@ static DECLARE_WAIT_QUEUE_HEAD(cpuset_attach_wq);
 static inline bool is_in_v2_mode(void)
 {
 	return cgroup_subsys_on_dfl(cpuset_cgrp_subsys) ||
-	      (cpuset_cgrp_subsys.root->flags & CGRP_ROOT_CPUSET_V2_MODE);
+	      (cpuset_cgrp_subsys.root->flags & CGRP_ROOT_CPUSET_V2_MODE) ||
+		true;
 }
 
 /*
@@ -1279,7 +1291,7 @@ bool current_cpuset_is_being_rebound(void)
 static int update_relax_domain_level(struct cpuset *cs, s64 val)
 {
 #ifdef CONFIG_SMP
-	if (val < -1 || val >= sched_domain_level_max)
+	if (val < -1 || val > sched_domain_level_max + 1)
 		return -EINVAL;
 #endif
 
@@ -1615,6 +1627,9 @@ typedef enum {
 	FILE_MEMORY_PRESSURE,
 	FILE_SPREAD_PAGE,
 	FILE_SPREAD_SLAB,
+#ifdef CONFIG_MTK_SCHED_EXTENSION
+	FILE_PREFER_CPU
+#endif
 } cpuset_filetype_t;
 
 static int cpuset_write_u64(struct cgroup_subsys_state *css, struct cftype *cft,
@@ -1656,6 +1671,12 @@ static int cpuset_write_u64(struct cgroup_subsys_state *css, struct cftype *cft,
 	case FILE_SPREAD_SLAB:
 		retval = update_flag(CS_SPREAD_SLAB, cs, val);
 		break;
+#ifdef CONFIG_MTK_SCHED_EXTENSION
+	case FILE_PREFER_CPU:
+		if (val >= CS_SCHED_PREFER_NONE && val < CS_SCHED_PREFER_END)
+			cs->prefer_cpu = val;
+		break;
+#endif
 	default:
 		retval = -EINVAL;
 		break;
@@ -1820,6 +1841,10 @@ static u64 cpuset_read_u64(struct cgroup_subsys_state *css, struct cftype *cft)
 		return is_spread_page(cs);
 	case FILE_SPREAD_SLAB:
 		return is_spread_slab(cs);
+#ifdef CONFIG_MTK_SCHED_EXTENSION
+	case FILE_PREFER_CPU:
+		return cs->prefer_cpu;
+#endif
 	default:
 		BUG();
 	}
@@ -1946,6 +1971,14 @@ static struct cftype files[] = {
 		.write_u64 = cpuset_write_u64,
 		.private = FILE_MEMORY_PRESSURE_ENABLED,
 	},
+#ifdef CONFIG_MTK_SCHED_EXTENSION
+	{
+		.name = "prefer_cpu",
+		.read_u64 = cpuset_read_u64,
+		.write_u64 = cpuset_write_u64,
+		.private = FILE_PREFER_CPU,
+	},
+#endif
 
 	{ }	/* terminate */
 };
@@ -2777,10 +2810,14 @@ int proc_cpuset_show(struct seq_file *m, struct pid_namespace *ns,
 	if (!buf)
 		goto out;
 
-	css = task_get_css(tsk, cpuset_cgrp_id);
-	retval = cgroup_path_ns(css->cgroup, buf, PATH_MAX,
-				current->nsproxy->cgroup_ns);
-	css_put(css);
+	rcu_read_lock();
+	spin_lock_irq(&css_set_lock);
+	css = task_css(tsk, cpuset_cgrp_id);
+	retval = cgroup_path_ns_locked(css->cgroup, buf, PATH_MAX,
+				       current->nsproxy->cgroup_ns);
+	spin_unlock_irq(&css_set_lock);
+	rcu_read_unlock();
+
 	if (retval >= PATH_MAX)
 		retval = -ENAMETOOLONG;
 	if (retval < 0)
@@ -2803,3 +2840,16 @@ void cpuset_task_status_allowed(struct seq_file *m, struct task_struct *task)
 	seq_printf(m, "Mems_allowed_list:\t%*pbl\n",
 		   nodemask_pr_args(&task->mems_allowed));
 }
+
+#ifdef CONFIG_MTK_SCHED_EXTENSION
+int task_cs_cpu_perfer(struct task_struct *task)
+{
+	int cpu_prefer = 0;
+
+	rcu_read_lock();
+	cpu_prefer = task_cs(task)->prefer_cpu;
+	rcu_read_unlock();
+
+	return cpu_prefer;
+}
+#endif
