@@ -45,6 +45,7 @@
 #include "blk-mq.h"
 #include "blk-mq-sched.h"
 #include "blk-rq-qos.h"
+#include "mtk_mmc_block.h"
 
 #ifdef CONFIG_DEBUG_FS
 struct dentry *blk_debugfs_root;
@@ -413,7 +414,7 @@ void blk_sync_queue(struct request_queue *q)
 	if (q->mq_ops) {
 		struct blk_mq_hw_ctx *hctx;
 		int i;
-
+		mt_bio_queue_free(current);
 		queue_for_each_hw_ctx(q, hctx, i)
 			cancel_delayed_work_sync(&hctx->run_work);
 	} else {
@@ -2775,10 +2776,15 @@ void blk_account_io_done(struct request *req, u64 now)
 		part_stat_add(cpu, part, nsecs[sgrp], now - req->start_time_ns);
 		part_round_stats(req->q, cpu, part);
 		part_dec_in_flight(req->q, part, rq_data_dir(req));
+		if (!(req->rq_flags & RQF_STARTED))
+			part_stat_inc(cpu, part, flush_ios);
 
 		hd_struct_put(part);
 		part_stat_unlock();
 	}
+
+	if (req->rq_flags & RQF_FLUSH_SEQ)
+		req->q->flush_ios++;
 }
 
 #ifdef CONFIG_PM
@@ -2998,8 +3004,11 @@ static void blk_dequeue_request(struct request *rq)
 	 * and to it is freed is accounted as io that is in progress at
 	 * the driver side.
 	 */
-	if (blk_account_rq(rq))
+	if (blk_account_rq(rq)) {
+		if (!queue_in_flight(q))
+			q->in_flight_stamp = ktime_get();
 		q->in_flight[rq_is_sync(rq)]++;
+	}
 }
 
 /**
