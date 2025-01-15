@@ -1268,6 +1268,7 @@ enum cp_reason_type {
 	CP_SPEC_LOG_NUM,
 	CP_RECOVER_DIR,
 	CP_XATTR_DIR,
+	NR_CP_REASON,
 };
 
 enum iostat_type {
@@ -1556,7 +1557,7 @@ struct f2fs_sec_stat_info {
 	u64 gc_ttime[2];
 
 	u64 cp_cnt[NR_STAT_CP];		/* total, balance, fsync */
-	u64 cpr_cnt[12];	/* cp reason by fsync */
+	u64 cpr_cnt[NR_CP_REASON];	/* cp reason by fsync */
 	u64 cp_max_interval;		/* max checkpoint interval */
 	u64 alloc_seg_type[2];		/* LFS, SSR */
 	u64 alloc_blk_count[2];
