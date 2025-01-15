@@ -15,10 +15,28 @@ config ZRAM
 
 	  See Documentation/blockdev/zram.txt for more information.
 
+config ZRAM_ENTROPY
+	bool "Use entropy optimization for zram"
+	depends on ZRAM
+	help
+	  With this feature, entropy will be calculated for each page.
+	  Pages above ZRAM_ENTROPY_THRESHOLD entropy will be
+	  stored uncompressed. Use this feature if you need a performance
+	  boost and a small loss in compression.
+
+config ZRAM_ENTROPY_THRESHOLD
+	int
+	depends on ZRAM && ZRAM_ENTROPY
+	default 80000
+	help
+	  Pages with entropy above ZRAM_ENTROPY_THRESHOLD will be stored
+	  uncompressed. The default value was chosen as a result a lot of
+	  experiments. You can try set your own value.
+
 config ZRAM_WRITEBACK
        bool "Write back incompressible or idle page to backing device"
        depends on ZRAM
-       default n
+       default y
        help
 	 With incompressible page, there is no memory saving to keep it
 	 in memory. Instead, write it out to backing device.
@@ -39,3 +57,15 @@ config ZRAM_MEMORY_TRACKING
 	  /sys/kernel/debug/zram/zramX/block_state.
 
 	  See Documentation/blockdev/zram.txt for more information.
+
+config ZRAM_LRU_WRITEBACK
+	bool
+	depends on ZRAM_WRITEBACK
+	default y
+	help
+	  This feature supports zram lru-based writeback (SQZR).
+
+config ZRAM_LRU_WRITEBACK_LIMIT
+	int "Limit zram lru writeback"
+	default 5120
+	depends on ZRAM_LRU_WRITEBACK

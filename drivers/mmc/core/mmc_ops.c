@@ -22,6 +22,8 @@
 #include "card.h"
 #include "host.h"
 #include "mmc_ops.h"
+#include "queue.h"
+#include "block.h"
 
 #define MMC_OPS_TIMEOUT_MS		(10 * 60 * 1000) /* 10min*/
 #define MMC_BKOPS_TIMEOUT_MS		(120 * 1000) /* 120s */
@@ -68,8 +70,10 @@ int __mmc_send_status(struct mmc_card *card, u32 *status, unsigned int retries)
 	cmd.flags = MMC_RSP_SPI_R2 | MMC_RSP_R1 | MMC_CMD_AC;
 
 	err = mmc_wait_for_cmd(card->host, &cmd, retries);
-	if (err)
+	if (err) {
+		mmc_error_count_log(card, MMC_CMD_OFFSET, err, 0);
 		return err;
+	}
 
 	/* NOTE: callers are required to understand the difference
 	 * between "native" and SPI format status words!
@@ -580,7 +584,7 @@ int __mmc_switch(struct mmc_card *card, u8 set, u8 index, u8 value,
 
 	/* Let's try to poll to find out when the command is completed. */
 	err = mmc_poll_for_busy(card, timeout_ms, send_status, retry_crc_err);
-	if (err)
+	if (err && err != -ETIMEDOUT)
 		goto out;
 
 out_tim:
@@ -989,6 +993,8 @@ static int mmc_cmdq_switch(struct mmc_card *card, bool enable)
 			 val, card->ext_csd.generic_cmd6_time);
 	if (!err)
 		card->ext_csd.cmdq_en = enable;
+	else
+		mmc_card_error_logging(card, NULL, CQ_EN_DIS_ERR);
 
 	return err;
 }

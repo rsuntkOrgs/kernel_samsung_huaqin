@@ -1054,7 +1054,9 @@ static int spi_transfer_one_message(struct spi_controller *ctlr,
 				ret = 0;
 				ms = 8LL * 1000LL * xfer->len;
 				do_div(ms, xfer->speed_hz);
-				ms += ms + 200; /* some tolerance */
+				/* Increase spi transfer tolerance to 2s */
+				/* To aviod timeout when OS is busy.*/
+				ms += 2000;
 
 				if (ms > UINT_MAX)
 					ms = UINT_MAX;
@@ -2894,11 +2896,57 @@ int spi_setup(struct spi_device *spi)
 
 	if (!spi->max_speed_hz)
 		spi->max_speed_hz = spi->controller->max_speed_hz;
+	
+#if 0
+	mutex_lock(&spi->controller->io_mutex);
+#endif
 
 	if (spi->controller->setup)
 		status = spi->controller->setup(spi);
 
-	spi_set_cs(spi, false);
+#if 0
+	if (spi->controller->auto_runtime_pm && spi->controller->set_cs) {
+        status = pm_runtime_get_sync(spi->controller->dev.parent);
+        if (status < 0) {
+            mutex_unlock(&spi->controller->io_mutex);
+            pm_runtime_put_noidle(spi->controller->dev.parent);
+            dev_err(&spi->controller->dev, "Failed to power device: %d\n",
+                status);
+            return status;
+        }
+
+        /*
+         * We do not want to return positive value from pm_runtime_get,
+         * there are many instances of devices calling spi_setup() and
+         * checking for a non-zero return value instead of a negative
+         * return value.
+         */
+        status = 0;
+
+        spi_set_cs(spi, false);
+        pm_runtime_mark_last_busy(spi->controller->dev.parent);
+        pm_runtime_put_autosuspend(spi->controller->dev.parent);
+    } else {
+        spi_set_cs(spi, false);
+    }
+
+	mutex_unlock(&spi->controller->io_mutex);
+#endif
+	if (spi->master->auto_runtime_pm && spi->master->set_cs) {
+		status = pm_runtime_get_sync(spi->master->dev.parent);
+		if (status < 0) {
+			pm_runtime_put_noidle(spi->master->dev.parent);
+			dev_err(&spi->dev, "Failed to power device: %d\n",
+				status);
+			return status;
+		}
+		spi_set_cs(spi, false);
+		pm_runtime_mark_last_busy(spi->master->dev.parent);
+		pm_runtime_put_autosuspend(spi->master->dev.parent);
+	} else {
+		spi_set_cs(spi, false);
+	}
+	
 
 	dev_dbg(&spi->dev, "setup mode %d, %s%s%s%s%u bits/w, %u Hz max --> %d\n",
 			(int) (spi->mode & (SPI_CPOL | SPI_CPHA)),
