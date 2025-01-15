@@ -40,6 +40,10 @@
 
 #include "internal.h"
 
+#ifdef CONFIG_SEC_DEBUG_AUTO_COMMENT
+#include <linux/sec_debug.h>
+#endif
+
 /*
  * Lock order:
  *   1. slab_mutex (Global Mutex)
@@ -594,8 +598,14 @@ static void print_track(const char *s, struct track *t, unsigned long pr_time)
 	if (!t->addr)
 		return;
 
+#ifdef CONFIG_SEC_DEBUG_AUTO_COMMENT
+	pr_auto(ASL7, "INFO: %s in %pS age=%lu cpu=%u pid=%d\n",
+	       s, (void *)t->addr, pr_time - t->when, t->cpu, t->pid);
+#else
 	pr_err("INFO: %s in %pS age=%lu cpu=%u pid=%d\n",
 	       s, (void *)t->addr, pr_time - t->when, t->cpu, t->pid);
+#endif
+
 #ifdef CONFIG_STACKTRACE
 	{
 		int i;
@@ -633,9 +643,16 @@ static void slab_bug(struct kmem_cache *s, char *fmt, ...)
 	va_start(args, fmt);
 	vaf.fmt = fmt;
 	vaf.va = &args;
+
+#ifdef CONFIG_SEC_DEBUG_AUTO_COMMENT
+	pr_auto(ASL7, "=============================================================================\n");
+	pr_auto(ASL7, "BUG %s (%s): %pV\n", s->name, print_tainted(), &vaf);
+	pr_auto(ASL7, "-----------------------------------------------------------------------------\n\n");
+#else
 	pr_err("=============================================================================\n");
 	pr_err("BUG %s (%s): %pV\n", s->name, print_tainted(), &vaf);
 	pr_err("-----------------------------------------------------------------------------\n\n");
+#endif
 
 	add_taint(TAINT_BAD_PAGE, LOCKDEP_NOW_UNRELIABLE);
 	va_end(args);
@@ -676,8 +693,13 @@ static void print_trailer(struct kmem_cache *s, struct page *page, u8 *p)
 
 	print_page_info(page);
 
+#ifdef CONFIG_SEC_DEBUG_AUTO_COMMENT
+	pr_auto(ASL7, "INFO: Object 0x%p @offset=%tu fp=0x%p\n\n",
+		   p, p - addr, get_freepointer(s, p));
+#else
 	pr_err("INFO: Object 0x%p @offset=%tu fp=0x%p\n\n",
 	       p, p - addr, get_freepointer(s, p));
+#endif
 
 	if (s->flags & SLAB_RED_ZONE)
 		print_section(KERN_ERR, "Redzone  ", p - s->red_left_pad,
@@ -706,14 +728,22 @@ static void print_trailer(struct kmem_cache *s, struct page *page, u8 *p)
 		print_section(KERN_ERR, "Padding  ", p + off,
 			      size_from_object(s) - off);
 
-	dump_stack();
+	WARN_ON(1);
 }
 
 void object_err(struct kmem_cache *s, struct page *page,
 			u8 *object, char *reason)
 {
+#ifdef CONFIG_SEC_DEBUG_AUTO_COMMENT
+	pr_auto_once(7);
+#endif
+
 	slab_bug(s, "%s", reason);
 	print_trailer(s, page, object);
+
+#ifdef CONFIG_SEC_DEBUG_AUTO_COMMENT
+	pr_auto_disable(7);
+#endif
 }
 
 static __printf(3, 4) void slab_err(struct kmem_cache *s, struct page *page,
@@ -722,12 +752,18 @@ static __printf(3, 4) void slab_err(struct kmem_cache *s, struct page *page,
 	va_list args;
 	char buf[100];
 
+#ifdef CONFIG_SEC_DEBUG_AUTO_COMMENT
+	pr_auto_once(7);
+#endif
 	va_start(args, fmt);
 	vsnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
 	slab_bug(s, "%s", buf);
 	print_page_info(page);
-	dump_stack();
+	WARN_ON(1);
+#ifdef CONFIG_SEC_DEBUG_AUTO_COMMENT
+	pr_auto_disable(7);
+#endif
 }
 
 static void init_object(struct kmem_cache *s, void *object, u8 val)
@@ -759,6 +795,7 @@ static int check_bytes_and_report(struct kmem_cache *s, struct page *page,
 {
 	u8 *fault;
 	u8 *end;
+	u8 *addr = page_address(page);
 
 	metadata_access_enable();
 	fault = memchr_inv(start, value, bytes);
@@ -770,10 +807,21 @@ static int check_bytes_and_report(struct kmem_cache *s, struct page *page,
 	while (end > fault && end[-1] == value)
 		end--;
 
+#ifdef CONFIG_SEC_DEBUG_AUTO_COMMENT
+	pr_auto_once(7);
 	slab_bug(s, "%s overwritten", what);
-	pr_err("INFO: 0x%p-0x%p. First byte 0x%x instead of 0x%x\n",
-					fault, end - 1, fault[0], value);
+	pr_auto(ASL7, "INFO: 0x%p-0x%p @offset=%tu. First byte 0x%x instead of 0x%x\n",
+						fault, end - 1, fault - addr,
+						fault[0], value);
 	print_trailer(s, page, object);
+	pr_auto_disable(7);
+#else
+	slab_bug(s, "%s overwritten", what);
+	pr_err("INFO: 0x%p-0x%p @offset=%tu. First byte 0x%x instead of 0x%x\n",
+					fault, end - 1, fault - addr,
+					fault[0], value);
+	print_trailer(s, page, object);
+#endif
 
 	restore_bytes(s, what, value, fault, end);
 	return 0;
@@ -867,7 +915,8 @@ static int slab_pad_check(struct kmem_cache *s, struct page *page)
 	while (end > fault && end[-1] == POISON_INUSE)
 		end--;
 
-	slab_err(s, page, "Padding overwritten. 0x%p-0x%p", fault, end - 1);
+	slab_err(s, page, "Padding overwritten. 0x%p-0x%p @offset=%tu",
+			fault, end - 1, fault - start);
 	print_section(KERN_ERR, "Padding ", pad, remainder);
 
 	restore_bytes(s, "slab padding", POISON_INUSE, fault, end);
@@ -1024,7 +1073,7 @@ static void trace(struct kmem_cache *s, struct page *page, void *object,
 			print_section(KERN_INFO, "Object ", (void *)object,
 					s->object_size);
 
-		dump_stack();
+		WARN_ON(1);
 	}
 }
 
@@ -1312,6 +1361,30 @@ out:
 
 __setup("slub_debug", setup_slub_debug);
 
+static const char *exclusion_list[] = {
+        "zspage",
+        "zs_handle",
+        "zswap_entry",
+        "avtab_node",
+        "vm_area_struct",
+        "anon_vma_chain",
+        "anon_vma"
+};
+
+static int is_kmem_cache_excluded(const char *str)
+{
+        int i, excluded=0;
+
+        for (i = 0; i < ARRAY_SIZE(exclusion_list); i++)
+        {
+                if(!strncmp(str, exclusion_list[i], strlen(exclusion_list[i]))) {
+                        excluded = 1;
+                        break;
+                }
+        }
+        return excluded;
+}
+
 slab_flags_t kmem_cache_flags(unsigned int object_size,
 	slab_flags_t flags, const char *name,
 	void (*ctor)(void *))
@@ -1320,8 +1393,12 @@ slab_flags_t kmem_cache_flags(unsigned int object_size,
 	 * Enable debugging if selected on the kernel commandline.
 	 */
 	if (slub_debug && (!slub_debug_slabs || (name &&
-		!strncmp(slub_debug_slabs, name, strlen(slub_debug_slabs)))))
+		!strncmp(slub_debug_slabs, name, strlen(slub_debug_slabs))))) {
 		flags |= slub_debug;
+
+		if (name && is_kmem_cache_excluded(name))
+			flags &= ~SLAB_STORE_USER;
+	}
 
 	return flags;
 }
@@ -5178,6 +5255,14 @@ static ssize_t cache_dma_show(struct kmem_cache *s, char *buf)
 SLAB_ATTR_RO(cache_dma);
 #endif
 
+#ifdef CONFIG_ZONE_DMA32
+static ssize_t cache_dma32_show(struct kmem_cache *s, char *buf)
+{
+	return sprintf(buf, "%d\n", !!(s->flags & SLAB_CACHE_DMA32));
+}
+SLAB_ATTR_RO(cache_dma32);
+#endif
+
 static ssize_t usersize_show(struct kmem_cache *s, char *buf)
 {
 	return sprintf(buf, "%u\n", s->usersize);
@@ -5517,6 +5602,9 @@ static struct attribute *slab_attrs[] = {
 #endif
 #ifdef CONFIG_ZONE_DMA
 	&cache_dma_attr.attr,
+#endif
+#ifdef CONFIG_ZONE_DMA32
+	&cache_dma32_attr.attr,
 #endif
 #ifdef CONFIG_NUMA
 	&remote_node_defrag_ratio_attr.attr,

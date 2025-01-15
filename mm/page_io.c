@@ -63,9 +63,11 @@ void end_swap_bio_write(struct bio *bio)
 		 * Also clear PG_reclaim to avoid rotate_reclaimable_page()
 		 */
 		set_page_dirty(page);
+#ifndef CONFIG_ZRAM
 		pr_alert("Write-error on swap-device (%u:%u:%llu)\n",
 			 MAJOR(bio_dev(bio)), MINOR(bio_dev(bio)),
 			 (unsigned long long)bio->bi_iter.bi_sector);
+#endif
 		ClearPageReclaim(page);
 	}
 	end_page_writeback(page);
@@ -302,6 +304,7 @@ int swap_readpage(struct page *page, bool synchronous)
 	struct swap_info_struct *sis = page_swap_info(page);
 	blk_qc_t qc;
 	struct gendisk *disk;
+	bool workingset = PageWorkingset(page);
 	unsigned long pflags;
 
 	VM_BUG_ON_PAGE(!PageSwapCache(page) && !synchronous, page);
@@ -313,7 +316,8 @@ int swap_readpage(struct page *page, bool synchronous)
 	 * or the submitting cgroup IO-throttled, submission can be a
 	 * significant part of overall IO time.
 	 */
-	psi_memstall_enter(&pflags);
+	if (workingset)
+		psi_memstall_enter(&pflags);
 
 	if (frontswap_load(page) == 0) {
 		SetPageUptodate(page);
