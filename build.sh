@@ -5,17 +5,18 @@
 # A special build script for Rissu's kernel
 #
 
-# << If unset
+# << If unset, you can override if u want
 [ -z $IS_CI ] && IS_CI=false
 [ -z $DO_CLEAN ] && DO_CLEAN=false
 [ -z $LTO ] && LTO=none
 [ -z $DEFAULT_KSU_REPO ] && DEFAULT_KSU_REPO="https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh"
+[ -z $DEFAULT_AK3_REPO ] && DEFAULT_AK3_REPO="git clone https://github.com/rsuntk/AnyKernel3.git"
 [ -z $DEVICE ] && DEVICE="Unknown"
 
 # special rissu's path. linked to his toolchains
 if [ -d /rsuntk ]; then
-	export CROSS_COMPILE=/rsuntk/toolchains/aarch64-linux-android/bin/aarch64-linux-android-
-	export PATH=/rsuntk/toolchains/clang-12/bin:$PATH
+	export CROSS_COMPILE=/rsuntk/toolchains/gcc-10/bin/aarch64-buildroot-linux-gnu-
+	export PATH=/rsuntk/toolchains/clang-20/bin:$PATH
 fi
 
 # start of default args
@@ -40,12 +41,10 @@ setconfig() { # fmt: setconfig enable/disable <NAME>
 		exit
 	fi
 }
-
 clone_ak3() {
-	[ ! -d $(pwd)/AnyKernel3 ] && git clone https://github.com/rsuntk/AnyKernel3.git --depth=1
+	[ ! -d $(pwd)/AnyKernel3 ] && $DEFAULT_AK3_REPO --depth=1
 	rm -rf AnyKernel3/.git
 }
-
 gen_getutsrelease() {
 # generate simple c file
 if [ ! -e utsrelease.c ]; then
@@ -65,12 +64,17 @@ int main() {
 }" > utsrelease.c
 fi
 }
-
 pr_invalid() {
-	echo -e "Invalid args: $@"
+	echo -e "[-] Invalid args: $@"
 	exit
 }
-
+pr_err() {
+	echo -e "[-] $@"
+	exit
+}
+pr_info() {
+	echo -e "[+] $@"
+}
 usage() {
 	echo -e "Usage: bash `basename $0` <build_target> <-j | --jobs> <(job_count)> <defconfig>"
 	printf "\tbuild_target: dirty, kernel, config, clean\n"
@@ -93,28 +97,22 @@ usage() {
 
 # if first arg starts with "clean"
 if [[ "$1" = "clean" ]]; then
-	if [ $# -gt 1 ]; then
-		echo "! Excess argument, only need one argument."
-		exit
-	fi
-	echo "- Cleaning dirs"
+	[ $# -gt 1 ] && pr_err "Excess argument, only need one argument."
+	pr_info "Cleaning dirs"
 	if [ -d $(pwd)/out ]; then
 		rm -rf out
 	elif [ -f $(pwd)/.config ]; then
 		make clean
 		make mrproper
 	else
-		echo "- No need clean"
-		exit
+		pr_err "No need clean."
 	fi
-	echo "- All clean."
-	exit
+	pr_err "All clean."
 elif [[ "$1" = "dirty" ]]; then
 	if [ $# -gt 3 ]; then
-		echo "! Excess argument, only need three argument."
-		exit
+		pr_err "Excess argument, only need three argument."
 	fi	
-	echo "- Starting dirty build"
+	pr_err "Starting dirty build"
 	FIRST_JOB="$2"
 	JOB_COUNT="$3"
 	if [ "$FIRST_JOB" = "-j" ] || [ "$FIRST_JOB" = "--jobs" ]; then
@@ -129,15 +127,14 @@ elif [[ "$1" = "dirty" ]]; then
 	make -j`echo $ALLOC_JOB` -C $(pwd) O=$(pwd)/out `echo $DEFAULT_ARGS`
 elif [[ "$1" = "ak3" ]]; then
 	if [ $# -gt 1 ]; then
-		echo "! Excess argument, only need one argument."
-		exit
+		pr_err "Excess argument, only need one argument."
 	fi
 	clone_ak3;
 else
 	[ $# != 4 ] && usage;
 fi
 
-[ "$KERNELSU" = "true" ] && curl -LSs $DEFAULT_KSU_REPO | bash -s main || echo -e "KernelSU is disabled. Add 'KERNELSU=true' or 'export KERNELSU=true' to enable"
+[ "$KERNELSU" = "true" ] && curl -LSs $DEFAULT_KSU_REPO | bash -s main || pr_info "KernelSU is disabled. Add 'KERNELSU=true' or 'export KERNELSU=true' to enable"
 
 BUILD_TARGET="$1"
 FIRST_JOB="$2"
@@ -211,9 +208,6 @@ pr_sum() {
 	echo ""
 }
 
-# call summary
-pr_sum
-
 pr_post_build() {
 	echo ""
 	echo -e "## Build $@ at `date` ##"
@@ -225,7 +219,7 @@ post_build_clean() {
 	if [ -e $AK3 ]; then
 		rm -rf $AK3/Image
 		rm -rf $AK3/modules/vendor/lib/modules/*.ko
-		sed -i "s/do\.modules=.*/do.modules=0/" "$(pwd)/AnyKernel3/anykernel.sh"
+		#sed -i "s/do\.modules=.*/do.modules=0/" "$(pwd)/AnyKernel3/anykernel.sh"
 		echo "stub" > $AK3/modules/vendor/lib/modules/stub
 	fi
 	rm getutsrel
@@ -265,21 +259,17 @@ post_build() {
 		# CI will clean itself post-build, so we don't need to clean
 		# Also avoiding small AnyKernel3 zip issue!
 		if [ "$IS_CI" != "true" ] && [ "$DO_CLEAN" = "true" ]; then
-			echo "- Host is not Automated CI, cleaning dirs"
+			pr_info "Host is not Automated CI, cleaning dirs"
 			post_build_clean;
 		fi
 		cd ..
-		echo "- Build done. Thanks for using this build script :)"
-		exit
+		pr_err "Build done. Thanks for using this build script :)"
 	fi
 }
 
-# build target
-if [ "$BUILD" = "kernel" ]; then
-	make -j`echo $ALLOC_JOB` -C $(pwd) O=$(pwd)/out `echo $DEFAULT_ARGS` `echo $BUILD_DEFCONFIG`
-	[ "$KERNELSU" = "true" ] && setconfig enable KSU
+handle_lto() {
 	if [[ "$LTO" = "thin" ]]; then
-		echo "[build] LTO: thin"
+		pr_info "LTO: Thin"
 		setconfig disable LTO_NONE
 		setconfig enable LTO
 		setconfig enable THINLTO
@@ -287,22 +277,21 @@ if [ "$BUILD" = "kernel" ]; then
 		setconfig enable ARCH_SUPPORTS_LTO_CLANG
 		setconfig enable ARCH_SUPPORTS_THINLTO
 	elif [[ "$LTO" = "full" ]]; then
-		echo "[build] LTO: full"
+		pr_info "LTO: Full"
 		setconfig disable LTO_NONE
 		setconfig enable LTO
 		setconfig disable THINLTO
 		setconfig enable LTO_CLANG
 		setconfig enable ARCH_SUPPORTS_LTO_CLANG
 		setconfig enable ARCH_SUPPORTS_THINLTO
-	else
-		echo "[build] LTO: none"
-		setconfig enable LTO_NONE
-		setconfig disable LTO
-		setconfig disable THINLTO
-		setconfig disable LTO_CLANG
-		setconfig enable ARCH_SUPPORTS_LTO_CLANG
-		setconfig enable ARCH_SUPPORTS_THINLTO
 	fi
+}
+# call summary
+pr_sum
+if [ "$BUILD" = "kernel" ]; then
+	make -j`echo $ALLOC_JOB` -C $(pwd) O=$(pwd)/out `echo $DEFAULT_ARGS` `echo $BUILD_DEFCONFIG`
+	[ "$KERNELSU" = "true" ] && setconfig enable KSU
+	[ "$LTO" != "none" ] && handle_lto || pr_info "LTO not set";
 	make -j`echo $ALLOC_JOB` -C $(pwd) O=$(pwd)/out `echo $DEFAULT_ARGS`
 	if [ -e $IMAGE ]; then
 		pr_post_build "completed"
