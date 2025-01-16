@@ -2796,8 +2796,6 @@ static struct notifier_block vmalloc_size_nb = {
 
 static int __init proc_vmalloc_init(void)
 {
-	if (IS_ENABLED(CONFIG_PROC_STRIPPED))
-		return 0;
 	if (IS_ENABLED(CONFIG_NUMA))
 		proc_create_seq_private("vmallocinfo", 0400, NULL,
 				&vmalloc_op,
