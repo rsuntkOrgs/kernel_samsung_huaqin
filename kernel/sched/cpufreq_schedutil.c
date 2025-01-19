@@ -227,7 +227,9 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	freq = map_util_freq(util, freq, max);
 #endif
 
+#ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
 	freq = clamp_val(freq, policy->min, policy->max);
+#endif
 
 	if (freq == sg_policy->cached_raw_freq && !sg_policy->need_freq_update)
 		return sg_policy->next_freq;
@@ -243,6 +245,9 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 #endif
 }
 #endif
+
+extern long
+schedtune_cpu_margin_with(unsigned long util, int cpu, struct task_struct *p);
 
 /*
  * This function computes an effective utilization for the given CPU, to be
@@ -302,7 +307,11 @@ unsigned long schedutil_cpu_util(int cpu, unsigned long util_cfs,
 	 */
 	util = util_cfs + cpu_util_rt(rq);
 	if (type == FREQUENCY_UTIL)
+#ifdef CONFIG_SCHED_TUNE
+		util += schedtune_cpu_margin_with(util, cpu, p);
+#else
 		util = uclamp_rq_util_with(rq, util, p);
+#endif
 
 	dl_util = cpu_util_dl(rq);
 
@@ -356,24 +365,11 @@ unsigned long schedutil_cpu_util(int cpu, unsigned long util_cfs,
 static unsigned long sugov_get_util(struct sugov_cpu *sg_cpu)
 {
 	struct rq *rq = cpu_rq(sg_cpu->cpu);
-#ifdef CONFIG_SCHED_TUNE
-	unsigned long util = stune_util(sg_cpu->cpu, cpu_util_rt(rq));
-#else
-	unsigned long util = cpu_util_freq(sg_cpu->cpu);
-#endif
-	unsigned long util_cfs = util - cpu_util_rt(rq);
+	unsigned long util_cfs = cpu_util_cfs(rq);
 	unsigned long max = arch_scale_cpu_capacity(NULL, sg_cpu->cpu);
 
 	sg_cpu->max = max;
 	sg_cpu->bw_dl = cpu_bw_dl(rq);
-
-	spin_lock(&per_cpu(cpufreq_idle_cpu_lock, sg_cpu->cpu));
-	if (per_cpu(cpufreq_idle_cpu, sg_cpu->cpu)) {
-		spin_unlock(&per_cpu(cpufreq_idle_cpu_lock, sg_cpu->cpu));
-		return 0;
-	}
-
-	spin_unlock(&per_cpu(cpufreq_idle_cpu_lock, sg_cpu->cpu));
 
 	return schedutil_cpu_util(sg_cpu->cpu, util_cfs, max,
 				  FREQUENCY_UTIL, NULL);
@@ -578,10 +574,11 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	}
 
 #ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
-	sugov_update_next_freq(sg_policy, time, next_f);
-	mt_cpufreq_set_by_wfi_load_cluster(cid, next_f);
-	policy->cur = next_f;
-	trace_sched_util(cid, next_f, time);
+	if (sugov_update_next_freq(sg_policy, time, next_f)) {
+		mt_cpufreq_set_by_wfi_load_cluster(cid, next_f);
+		policy->cur = next_f;
+		trace_sched_util(cid, next_f, time);
+	}
 #else
 
 	/*
@@ -661,10 +658,12 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 		next_f = sugov_next_freq_shared(sg_cpu, time);
 
 #ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
-		sugov_update_next_freq(sg_policy, time, next_f);
-		next_f = mt_cpufreq_find_close_freq(cid, next_f);
-		mt_cpufreq_set_by_wfi_load_cluster(cid, next_f);
-		trace_sched_util(cid, next_f, time);
+		if (sugov_update_next_freq(sg_policy, time, next_f)) {
+			next_f = mt_cpufreq_find_close_freq(cid, next_f);
+			mt_cpufreq_set_by_wfi_load_cluster(cid, next_f);
+			__cpufreq_notifier_fp(cid, next_f);
+			trace_sched_util(cid, next_f, time);
+		}
 #else
 		if (sg_policy->policy->fast_switch_enabled)
 			sugov_fast_switch(sg_policy, time, next_f);
@@ -1047,7 +1046,6 @@ static int sugov_init(struct cpufreq_policy *policy)
 	if (ret)
 		goto fail;
 
-	policy->dvfs_possible_from_any_cpu = 1;
 
 out:
 	mutex_unlock(&global_tunables_lock);

@@ -899,9 +899,6 @@ struct rq {
 	/* capture load from *all* tasks on this CPU: */
 	struct load_weight	load;
 	unsigned long		nr_load_updates;
-#ifdef CONFIG_SMP
-	unsigned int		ttwu_pending;
-#endif
 	u64			nr_switches;
 
 #ifdef CONFIG_UCLAMP_TASK
@@ -939,6 +936,7 @@ struct rq {
 	u64			clock;
 	/* Ensure that all clocks are in the same cache line */
 	u64			clock_task ____cacheline_aligned;
+	u64			clock_task_mult;
 	u64			clock_pelt;
 	unsigned long		lost_idle_time;
 
@@ -2427,19 +2425,6 @@ out:
 	return clamp(util, min_util, max_util);
 }
 
-/*
- * When uclamp is compiled in, the aggregation at rq level is 'turned off'
- * by default in the fast path and only gets turned on once userspace performs
- * an operation that requires it.
- *
- * Returns true if userspace opted-in to use uclamp and aggregation at rq level
- * hence is active.
- */
-static inline bool uclamp_is_used(void)
-{
-	return static_branch_likely(&sched_uclamp_used);
-}
-
 /* Integer rounded range for each bucket */
 #define UCLAMP_BUCKET_DELTA \
 	DIV_ROUND_CLOSEST(SCHED_CAPACITY_SCALE, UCLAMP_BUCKETS)
@@ -2466,6 +2451,19 @@ static inline unsigned int uclamp_value(unsigned int cpu, int clamp_id)
 {
 	return cpu_rq(cpu)->uclamp[clamp_id].value;
 }
+
+/*
+ * When uclamp is compiled in, the aggregation at rq level is 'turned off'
+ * by default in the fast path and only gets turned on once userspace performs
+ * an operation that requires it.
+ *
+ * Returns true if userspace opted-in to use uclamp and aggregation at rq level
+ * hence is active.
+ */
+static inline bool uclamp_is_used(void)
+{
+	return static_branch_likely(&sched_uclamp_used);
+}
 #else /* CONFIG_UCLAMP_TASK */
 static inline
 unsigned long uclamp_rq_util_with(struct rq *rq, unsigned long util,
@@ -2473,6 +2471,7 @@ unsigned long uclamp_rq_util_with(struct rq *rq, unsigned long util,
 {
 	return util;
 }
+
 static inline bool uclamp_is_used(void)
 {
 	return false;
@@ -2595,8 +2594,5 @@ unsigned long scale_irq_capacity(unsigned long util, unsigned long irq, unsigned
 #ifdef CONFIG_SMP
 extern struct static_key_false sched_energy_present;
 #endif
-
-DECLARE_PER_CPU(int, cpufreq_idle_cpu);
-DECLARE_PER_CPU(spinlock_t, cpufreq_idle_cpu_lock);
 
 #include "extension/eas_plus.h"

@@ -8,12 +8,6 @@
 #include <mt-plat/turbo_common.h>
 #endif
 #include "../../drivers/misc/mediatek/base/power/include/mtk_upower.h"
-/* hs14 code for AL6528A-992 by gaozhengwei at 2022/11/25 start */
-#if defined(CONFIG_HQ_PROJECT_O22) && (!defined(HQ_FACTORY_BUILD))
-#include <mt-plat/mtk_boot_common.h>
-extern int hq_get_boot_mode(void);
-#endif
-/* hs14 code for AL6528A-992 by gaozhengwei at 2022/11/25 end */
 
 DEFINE_PER_CPU(struct task_struct*, migrate_task);
 static int idle_pull_cpu_stop(void *data)
@@ -215,16 +209,7 @@ inline unsigned int cpu_is_fastest(int cpu)
 	struct list_head *pos;
 
 	if (!pod_is_ready()) {
-/* hs14 code for AL6528A-992 by gaozhengwei at 2022/11/25 start */
-#if defined(CONFIG_HQ_PROJECT_O22) && (!defined(HQ_FACTORY_BUILD))
-		if ((hq_get_boot_mode() != KERNEL_POWER_OFF_CHARGING_BOOT) ||
-			(hq_get_boot_mode() != LOW_POWER_OFF_CHARGING_BOOT)) {
-			printk_deferred("Perf order domain is not ready!\n");
-		}
-#else
 		printk_deferred("Perf order domain is not ready!\n");
-#endif
-/* hs14 code for AL6528A-992 by gaozhengwei at 2022/11/25 end */
 		return -1;
 	}
 
@@ -239,16 +224,7 @@ inline unsigned int cpu_is_slowest(int cpu)
 	struct list_head *pos;
 
 	if (!pod_is_ready()) {
-/* hs14 code for AL6528A-992 by gaozhengwei at 2022/11/25 start */
-#if defined(CONFIG_HQ_PROJECT_O22) && (!defined(HQ_FACTORY_BUILD))
-		if ((hq_get_boot_mode() != KERNEL_POWER_OFF_CHARGING_BOOT) ||
-			(hq_get_boot_mode() != LOW_POWER_OFF_CHARGING_BOOT)) {
-			printk_deferred("Perf order domain is not ready!\n");
-		}
-#else
 		printk_deferred("Perf order domain is not ready!\n");
-#endif
-/* hs14 code for AL6528A-992 by gaozhengwei at 2022/11/25 end */
 		return -1;
 	}
 
@@ -262,16 +238,7 @@ bool is_intra_domain(int prev, int target)
 	struct perf_order_domain *perf_domain = NULL;
 
 	if (!pod_is_ready()) {
-/* hs14 code for AL6528A-992 by gaozhengwei at 2022/11/25 start */
-#if defined(CONFIG_HQ_PROJECT_O22) && (!defined(HQ_FACTORY_BUILD))
-		if ((hq_get_boot_mode() != KERNEL_POWER_OFF_CHARGING_BOOT) ||
-			(hq_get_boot_mode() != LOW_POWER_OFF_CHARGING_BOOT)) {
-			printk_deferred("Perf order domain is not ready!\n");
-		}
-#else
 		printk_deferred("Perf order domain is not ready!\n");
-#endif
-/* hs14 code for AL6528A-992 by gaozhengwei at 2022/11/25 end */
 		return 0;
 	}
 
@@ -522,7 +489,7 @@ static struct sched_entity
 			if (check_min_cap && util_min >= src_capacity)
 				return se;
 
-			if (schedtune_prefer_idle(task_of(se)) &&
+			if (uclamp_latency_sensitive(task_of(se)) &&
 					cpu_rq(cpu)->nr_running > 1) {
 				if (!check_min_cap)
 					return se;
