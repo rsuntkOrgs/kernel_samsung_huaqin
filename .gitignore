@@ -40,7 +40,6 @@
 *.su
 *.symtypes
 *.tab.[ch]
-*.tar
 *.xz
 Module.symvers
 modules.builtin
