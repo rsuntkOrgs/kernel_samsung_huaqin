@@ -2262,6 +2262,7 @@ static void zram_handle_comp_page(struct work_struct *work)
 	ret = zcomp_decompress(zstrm, src_decomp, size, dst);
 out_huge:
 	zcomp_stream_put(zram->comp);
+#ifdef CONFIG_ZRAM_LRU_WRITEBACK
 	if (ret) {
 		struct hex_dump_pages hdp;
 
@@ -2271,6 +2272,15 @@ out_huge:
 		handle_decomp_fail(zram->compressor, ret, offset + header_sz,
 				   src_decomp, size, &hdp);
 	}
+#else
+	if (ret) {
+		pr_err("%s Decompression failed! err=%d offset=%u size=%u addr=%p\n",
+			__func__, ret, offset, size, src);
+		print_hex_dump(KERN_DEBUG, "", DUMP_PREFIX_OFFSET, 16, 1,
+				src, PAGE_SIZE, 1);
+		BUG_ON(ret);
+	}
+#endif
 	kunmap_atomic(dst);
 	if (!spanned)
 		kunmap_atomic(src);
@@ -2921,10 +2931,20 @@ static int __zram_bvec_read(struct zram *zram, struct page *page, u32 index,
 		zcomp_stream_put(zram->comp);
 	}
 
+#ifdef CONFIG_ZRAM_LRU_WRITEBACK
 	/* Should NEVER happen. BUG() if it does. */
 	if (unlikely(ret))
 		handle_decomp_fail(zram->compressor, ret, index, src, size,
 				   NULL);
+#else
+	/* Should NEVER happen. BUG() if it does. */
+	if (unlikely(ret)) {
+		pr_err("%s Decompression failed! err=%d, page=%u, len=%u, vaddr=0x%px\n",
+			    zram->compressor, ret, index, size, src);
+		print_hex_dump(KERN_DEBUG, "", DUMP_PREFIX_OFFSET, 16, 1, src, size, 1);
+		BUG();
+	}
+#endif
 
 	zs_unmap_object(zram->mem_pool, handle);
 #ifdef CONFIG_ZRAM_LRU_WRITEBACK
