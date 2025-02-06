@@ -9,8 +9,9 @@
 [ -z $IS_CI ] && IS_CI=false
 [ -z $DO_CLEAN ] && DO_CLEAN=false
 [ -z $LTO ] && LTO=none
+[ -z $DEFAULT_KSU_BRANCH ] && DEFAULT_KSU_BRANCH="main"
 [ -z $DEFAULT_KSU_REPO ] && DEFAULT_KSU_REPO="https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh"
-[ -z $DEFAULT_AK3_REPO ] && DEFAULT_AK3_REPO="git clone https://github.com/rsuntk/AnyKernel3.git"
+[ -z $DEFAULT_AK3_REPO ] && DEFAULT_AK3_REPO="https://github.com/rsuntk/AnyKernel3.git"
 [ -z $DEVICE ] && DEVICE="Unknown"
 
 # special rissu's path. linked to his toolchains
@@ -25,6 +26,8 @@ CONFIG_SECTION_MISMATCH_WARN_ONLY=y
 ARCH=arm64
 KCFLAGS=-w
 "
+export LLVM=1
+export LLVM_IAS=1
 export ARCH=arm64
 export CLANG_TRIPLE=aarch64-linux-gnu-
 # end of default args
@@ -42,7 +45,7 @@ setconfig() { # fmt: setconfig enable/disable <NAME>
 	fi
 }
 clone_ak3() {
-	[ ! -d $(pwd)/AnyKernel3 ] && $DEFAULT_AK3_REPO --depth=1
+	[ ! -d $(pwd)/AnyKernel3 ] && git clone `echo $DEFAULT_AK3_REPO` --depth=1
 	rm -rf AnyKernel3/.git
 }
 gen_getutsrelease() {
@@ -134,7 +137,7 @@ else
 	[ $# != 4 ] && usage;
 fi
 
-[ "$KERNELSU" = "true" ] && curl -LSs $DEFAULT_KSU_REPO | bash -s main || pr_info "KernelSU is disabled. Add 'KERNELSU=true' or 'export KERNELSU=true' to enable"
+[ "$KERNELSU" = "true" ] && curl -LSs $DEFAULT_KSU_REPO | bash -s `echo $DEFAULT_KSU_BRANCH` || pr_info "KernelSU is disabled. Add 'KERNELSU=true' or 'export KERNELSU=true' to enable"
 
 BUILD_TARGET="$1"
 FIRST_JOB="$2"
