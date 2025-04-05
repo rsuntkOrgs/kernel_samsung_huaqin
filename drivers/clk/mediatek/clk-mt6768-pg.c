@@ -3469,7 +3469,11 @@ struct mtk_power_gate {
 	}
 
 /* FIXME: all values needed to be verified */
+#ifdef MODULE
 struct mtk_power_gate scp_clks[] __initdata = {
+#else
+struct mtk_power_gate scp_clks[] = {
+#endif
 	PGATE2(SCP_SYS_MD1, pg_md1, NULL, NULL, NULL, SYS_MD1),
 	PGATE2(SCP_SYS_CONN, pg_conn, NULL, NULL, NULL, SYS_CONN),
 	PGATE2(SCP_SYS_DPY, pg_dpy, NULL, NULL, NULL, SYS_DPY),
@@ -3488,7 +3492,7 @@ struct mtk_power_gate scp_clks[] __initdata = {
 	PGATE2(SCP_SYS_VDEC, pg_vdec, pg_dis, NULL, &vdec_cg, SYS_VDEC),
 };
 
-static int  init_clk_scpsys(struct platform_device *pdev, struct clk_onecell_data *clk_data)
+static int init_clk_scpsys(struct platform_device *pdev, struct clk_onecell_data *clk_data)
 {
 	int i;
 	struct clk *clk;
@@ -3573,7 +3577,7 @@ static void __iomem *get_reg(struct device_node *np, int index)
 #endif
 }
 
-static int  clk_mt6768_scpsys_probe(struct platform_device *pdev)
+static int clk_mt6768_scpsys_probe(struct platform_device *pdev)
 {
 	struct clk_onecell_data *clk_data;
 	int r;
