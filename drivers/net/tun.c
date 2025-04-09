@@ -2941,7 +2941,7 @@ static long __tun_chr_ioctl(struct file *file, unsigned int cmd,
 		 * TUNSETIFF.
 		 */
 		return put_user(IFF_TUN | IFF_TAP | TUN_FEATURES,
-				(unsigned int __user*)argp);
+			(unsigned int __user*)argp);
 	} else if (cmd == TUNSETQUEUE) {
 		return tun_set_queue(file, &ifr);
 	} else if (cmd == SIOCGSKNS) {
