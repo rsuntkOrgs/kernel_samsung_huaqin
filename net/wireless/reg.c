@@ -1057,6 +1057,16 @@ extern int hq_get_boot_mode(void);
 /*HS03S code for DEVAL5626-458 by wangzikang at 20210720 end*/
 static int query_regdb_file(const char *alpha2)
 {
+	int err;
+
+#ifndef HQ_FACTORY_BUILD	//ss version
+	if (hq_get_boot_mode() == KERNEL_POWER_OFF_CHARGING_BOOT ||
+		hq_get_boot_mode() == LOW_POWER_OFF_CHARGING_BOOT) {
+		pr_err("This is lpm, dont load regulatory.db\n");
+		return -1;
+	}
+#endif
+
 	ASSERT_RTNL();
 
 	if (regdb)
@@ -1065,22 +1075,14 @@ static int query_regdb_file(const char *alpha2)
 	alpha2 = kmemdup(alpha2, 2, GFP_KERNEL);
 	if (!alpha2)
 		return -ENOMEM;
-	return 0;
-/*HS03S code for DEVAL5626-458 by wangzikang at 20210720 start*/
-#ifndef HQ_FACTORY_BUILD	//ss version
-	if (hq_get_boot_mode() == KERNEL_POWER_OFF_CHARGING_BOOT ||
-		hq_get_boot_mode() == LOW_POWER_OFF_CHARGING_BOOT) {
-		pr_err("This is lpm, dont load regulatory.db\n");
-		return -1;
-	} else {
-#endif
-		return request_firmware_nowait(THIS_MODULE, true, "regulatory.db",
-						&reg_pdev->dev, GFP_KERNEL,
-						(void *)alpha2, regdb_fw_cb);
-#ifndef HQ_FACTORY_BUILD	//ss version
-	}
-#endif
-/*HS03S code for DEVAL5626-458 by wangzikang at 20210720 end*/
+
+	err = request_firmware_nowait(THIS_MODULE, true, "regulatory.db",
+				      &reg_pdev->dev, GFP_KERNEL,
+				      (void *)alpha2, regdb_fw_cb);
+	if (err)
+		kfree(alpha2);
+
+	return err;
 }
 
 int reg_reload_regdb(void)
@@ -3775,6 +3777,7 @@ void wiphy_regulatory_register(struct wiphy *wiphy)
 
 	wiphy_update_regulatory(wiphy, lr->initiator);
 	wiphy_all_share_dfs_chan_state(wiphy);
+	reg_process_self_managed_hints();
 }
 
 void wiphy_regulatory_deregister(struct wiphy *wiphy)
@@ -3930,8 +3933,10 @@ static int __init regulatory_init_db(void)
 		return -EINVAL;
 
 	err = load_builtin_regdb_keys();
-	if (err)
+	if (err) {
+		platform_device_unregister(reg_pdev);
 		return err;
+	}
 
 	/* We always try to get an update for the static regdomain */
 	err = regulatory_hint_core(cfg80211_world_regdom->alpha2);

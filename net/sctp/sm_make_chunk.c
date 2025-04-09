@@ -1984,9 +1984,7 @@ static int sctp_process_hn_param(const struct sctp_association *asoc,
 	return 0;
 }
 
-static int sctp_verify_ext_param(struct net *net,
-				 const struct sctp_endpoint *ep,
-				 union sctp_params param)
+static int sctp_verify_ext_param(struct net *net, union sctp_params param)
 {
 	__u16 num_ext = ntohs(param.p->length) - sizeof(struct sctp_paramhdr);
 	int have_asconf = 0;
@@ -2013,7 +2011,7 @@ static int sctp_verify_ext_param(struct net *net,
 	if (net->sctp.addip_noauth)
 		return 1;
 
-	if (ep->asconf_enable && !have_auth && have_asconf)
+	if (net->sctp.addip_enable && !have_auth && have_asconf)
 		return 0;
 
 	return 1;
@@ -2167,13 +2165,13 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
 		break;
 
 	case SCTP_PARAM_SUPPORTED_EXT:
-		if (!sctp_verify_ext_param(net, ep, param))
+		if (!sctp_verify_ext_param(net, param))
 			return SCTP_IERROR_ABORT;
 		break;
 
 	case SCTP_PARAM_SET_PRIMARY:
-		if (!ep->asconf_enable)
-			goto unhandled;
+		if (!net->sctp.addip_enable)
+			goto fallthrough;
 
 		if (ntohs(param.p->length) < sizeof(struct sctp_addip_param) +
 					     sizeof(struct sctp_paramhdr)) {
@@ -2192,11 +2190,11 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
 	case SCTP_PARAM_FWD_TSN_SUPPORT:
 		if (ep->prsctp_enable)
 			break;
-		goto unhandled;
+		goto fallthrough;
 
 	case SCTP_PARAM_RANDOM:
 		if (!ep->auth_enable)
-			goto unhandled;
+			goto fallthrough;
 
 		/* SCTP-AUTH: Secion 6.1
 		 * If the random number is not 32 byte long the association
@@ -2213,7 +2211,7 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
 
 	case SCTP_PARAM_CHUNKS:
 		if (!ep->auth_enable)
-			goto unhandled;
+			goto fallthrough;
 
 		/* SCTP-AUTH: Section 3.2
 		 * The CHUNKS parameter MUST be included once in the INIT or
@@ -2229,7 +2227,7 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
 
 	case SCTP_PARAM_HMAC_ALGO:
 		if (!ep->auth_enable)
-			goto unhandled;
+			goto fallthrough;
 
 		hmacs = (struct sctp_hmac_algo_param *)param.p;
 		n_elt = (ntohs(param.p->length) -
@@ -2252,7 +2250,7 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
 			retval = SCTP_IERROR_ABORT;
 		}
 		break;
-unhandled:
+fallthrough:
 	default:
 		pr_debug("%s: unrecognized param:%d for chunk:%d\n",
 			 __func__, ntohs(param.p->type), cid);
@@ -3673,7 +3671,7 @@ struct sctp_chunk *sctp_make_strreset_req(
 	outlen = (sizeof(outreq) + stream_len) * out;
 	inlen = (sizeof(inreq) + stream_len) * in;
 
-	retval = sctp_make_reconf(asoc, outlen + inlen);
+	retval = sctp_make_reconf(asoc, SCTP_PAD4(outlen) + SCTP_PAD4(inlen));
 	if (!retval)
 		return NULL;
 
