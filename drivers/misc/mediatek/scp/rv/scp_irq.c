@@ -55,8 +55,8 @@ static void scp_A_wdt_handler(unsigned long data)
 	enable_irq(data);
 }
 
-DECLARE_TASKLET(scp_A_irq0_tasklet, scp_A_wdt_handler, 0);
-DECLARE_TASKLET(scp_A_irq1_tasklet, scp_A_wdt_handler, 0);
+DECLARE_TASKLET_OLD(scp_A_irq0_tasklet, scp_A_wdt_handler);
+DECLARE_TASKLET_OLD(scp_A_irq1_tasklet, scp_A_wdt_handler);
 
 /*
  * dispatch scp irq

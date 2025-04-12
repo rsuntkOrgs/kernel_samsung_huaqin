@@ -45,7 +45,7 @@ struct keypad_dts_data kpd_dts_data;
 
 /* for keymap handling */
 static void kpd_keymap_handler(unsigned long data);
-static DECLARE_TASKLET(kpd_keymap_tasklet, kpd_keymap_handler, 0);
+static DECLARE_TASKLET_OLD(kpd_keymap_tasklet, kpd_keymap_handler);
 
 static void kpd_memory_setting(void);
 static int kpd_pdrv_probe(struct platform_device *pdev);

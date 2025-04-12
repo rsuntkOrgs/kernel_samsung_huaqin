@@ -650,7 +650,7 @@ static void aee_kapi_tasklet_handler(unsigned long data)
 	if (!ret)
 		pr_info("%s: ke work was already on a queue\n", __func__);
 }
-DECLARE_TASKLET(aee_kapi_tasklet, aee_kapi_tasklet_handler, 0);
+DECLARE_TASKLET_OLD(aee_kapi_tasklet, aee_kapi_tasklet_handler);
 
 static void ke_queue_request(struct aee_oops *oops)
 {
