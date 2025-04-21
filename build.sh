@@ -28,6 +28,10 @@ KCFLAGS=-w
 "
 export ARCH=arm64
 export CLANG_TRIPLE=aarch64-linux-gnu-
+# Compat vDSO
+export CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
+# Compatibility
+export CROSS_COMPILE_ARM32=$CROSS_COMPILE_COMPAT
 export LLVM=1
 export LLVM_IAS=1
 # end of default args
